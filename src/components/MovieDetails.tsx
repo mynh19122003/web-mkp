@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, Info } from 'lucide-react'
+import { formatMovieType } from '@/lib/utils'
 
 interface MovieDetailsProps {
   movie: {
@@ -13,6 +14,8 @@ interface MovieDetailsProps {
     country: string
     year: number
     duration: number
+    type?: string
+    apiType?: string
   }
 }
 
@@ -89,6 +92,10 @@ export default function MovieDetails({ movie }: MovieDetailsProps) {
             <div className="flex justify-between">
               <span className="text-gray-400">Thời lượng:</span>
               <span className="text-white font-medium">{movie.duration} phút</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Loại phim:</span>
+              <span className="text-white font-medium">{formatMovieType(movie.apiType, movie.type)}</span>
             </div>
             {movie.director && (
               <div className="flex justify-between">
