@@ -74,12 +74,16 @@ export default function MovieCard({ movie, size = 'medium' }: MovieCardProps) {
           </h3>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center space-x-2">
-              <Link
-                href={`/phim/${movie.id}`}
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  window.location.href = `/phim/${movie.slug || movie.id}`;
+                }}
                 className="bg-white text-black p-2 rounded-full hover:scale-110 transition-all duration-200 shimmer"
               >
                 <Play className="w-4 h-4 fill-current" />
-              </Link>
+              </button>
               <button className="bg-gray-700 bg-opacity-80 text-white p-2 rounded-full hover:bg-gray-600 transition-all duration-200 glow-border">
                 <Plus className="w-4 h-4" />
               </button>
