@@ -43,6 +43,36 @@ export class PhimAPIService {
     }
   }
 
+  // Lấy danh sách phim lẻ (single)
+  static async getSingleMovies(page: number = 1): Promise<Movie[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/v1/api/danh-sach/phim-le?page=${page}`)
+      const data = await response.json()
+      
+      const movies = this.transformMovieData(data.data?.items || [])
+      // Filter chỉ lấy phim có type là 'single'
+      return movies.filter(movie => movie.apiType === 'single' || movie.type === 'single')
+    } catch (error) {
+      console.error('Lỗi khi lấy danh sách phim lẻ:', error)
+      return []
+    }
+  }
+
+  // Lấy danh sách phim bộ (series)
+  static async getSeriesMovies(page: number = 1): Promise<Movie[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/v1/api/danh-sach/phim-bo?page=${page}`)
+      const data = await response.json()
+      
+      const movies = this.transformMovieData(data.data?.items || [])
+      // Filter chỉ lấy phim có type là 'series'
+      return movies.filter(movie => movie.apiType === 'series' || movie.type === 'series')
+    } catch (error) {
+      console.error('Lỗi khi lấy danh sách phim bộ:', error)
+      return []
+    }
+  }
+
   // Lấy chi tiết phim
   static async getMovieDetail(slug: string): Promise<Movie | null> {
     try {
@@ -347,17 +377,49 @@ export class PhimAPIService {
   // 6. Phim chiếu rạp - Bom tấn mới nhất
   static async getCinemaMovies(page: number = 1): Promise<Movie[]> {
     try {
-      // Lấy phim mới và lọc phim có điểm cao (giống phim chiếu rạp)
-      const newMovies = await this.getNewMovies(page)
+      // Ưu tiên endpoint phim chiếu rạp chuyên biệt từ API
+      try {
+        const response = await fetch(`${API_BASE_URL}/v1/api/danh-sach/phim-chieu-rap?page=${page}`)
+        const data = await response.json()
+        
+        if (data.status && data.data?.items && data.data.items.length > 0) {
+          return this.transformMovieData(data.data.items)
+            .sort((a, b) => {
+              // Sắp xếp theo rating và năm phát hành
+              const ratingA = a.imdbRating || a.rating || 7.0
+              const ratingB = b.imdbRating || b.rating || 7.0
+              const scoreA = ratingA * 100 + (a.year - 2020) * 10 + (a.views || Math.random() * 1000) * 0.2
+              const scoreB = ratingB * 100 + (b.year - 2020) * 10 + (b.views || Math.random() * 1000) * 0.2
+              return scoreB - scoreA
+            })
+        }
+      } catch (err) {
+        console.log('Cinema API endpoint failed, using fallback')
+      }
+
+      // Fallback: Lấy phim từ nhiều nguồn và filter như phim chiếu rạp
+      const [newMovies, movieList, tvSeries] = await Promise.all([
+        this.getNewMovies(page),
+        this.getMovies(page),
+        this.getTVSeries(page)
+      ])
       
-      return newMovies
+      // Combine tất cả phim từ các nguồn
+      const allMovies = [...newMovies, ...movieList, ...tvSeries]
+      
+      return allMovies
         .filter(movie => 
-          (movie.imdbRating || movie.rating || 0) > 7.0 &&
-          movie.quality !== 'CAM' // Loại bỏ phim quay lén
+          // Loại bỏ phim quality kém và ưu tiên phim có rating cao
+          movie.quality !== 'CAM' &&
+          movie.quality !== 'TS' &&
+          movie.year >= 2020 // Ưu tiên phim mới từ 2020 trở lại đây
         )
         .sort((a, b) => {
-          const scoreA = (a.views || Math.random() * 2000) * 0.5 + (a.imdbRating || a.rating || 8.0) * 300
-          const scoreB = (b.views || Math.random() * 2000) * 0.5 + (b.imdbRating || b.rating || 8.0) * 300
+          // Ưu tiên phim có rating cao, nhưng cũng có phim rating thấp/không có rating
+          const ratingA = a.imdbRating || a.rating || 6.0 // Default 6.0 cho phim không có rating
+          const ratingB = b.imdbRating || b.rating || 6.0
+          const scoreA = (a.views || Math.random() * 1500) * 0.3 + ratingA * 100 + (a.year - 2020) * 10
+          const scoreB = (b.views || Math.random() * 1500) * 0.3 + ratingB * 100 + (b.year - 2020) * 10
           return scoreB - scoreA
         })
         .slice(0, 20)
@@ -426,6 +488,44 @@ export class PhimAPIService {
         .slice(0, 20)
     } catch (error) {
       console.error(`Lỗi khi lấy phim ${country}:`, error)
+      return this.getNewMovies(page)
+    }
+  }
+
+  // Lấy phim theo category
+  static async getMoviesByCategory(categorySlug: string, page: number = 1): Promise<Movie[]> {
+    try {
+      // Thử với endpoint category từ PhimAPI
+      const response = await fetch(`${API_BASE_URL}/v1/api/the-loai/${categorySlug}?page=${page}`)
+      const data = await response.json()
+      
+      if (data.status && data.data?.items) {
+        return this.transformMovieData(data.data.items)
+      }
+
+      // Fallback: tìm kiếm theo tên category
+      const searchResponse = await fetch(`${API_BASE_URL}/v1/api/tim-kiem?keyword=${encodeURIComponent(categorySlug)}&page=${page}`)
+      const searchData = await searchResponse.json()
+      
+      if (searchData.status && searchData.data?.items) {
+        return this.transformMovieData(searchData.data.items)
+      }
+
+      // Fallback cuối: lọc từ phim mới theo category trong genres
+      const allMovies = await this.getNewMovies(1)
+      return allMovies.filter(movie => 
+        movie.genres?.some(genre => 
+          genre.toLowerCase().includes(categorySlug.toLowerCase()) ||
+          categorySlug.toLowerCase().includes(genre.toLowerCase())
+        ) ||
+        movie.categories?.some(cat => 
+          cat.slug === categorySlug ||
+          cat.name.toLowerCase().includes(categorySlug.toLowerCase())
+        )
+      ).slice(0, 20)
+      
+    } catch (error) {
+      console.error(`Lỗi khi lấy phim theo category ${categorySlug}:`, error)
       return this.getNewMovies(page)
     }
   }
@@ -521,6 +621,8 @@ export class PhimAPIService {
         backdrop: this.convertImageUrl(backdropUrl),
         rating: parseFloat(item.tmdb?.vote_average || item.rating || '0'),
         imdbRating: parseFloat(item.imdb?.rating || item.tmdb?.vote_average || item.rating || '0'),
+        voteAverage: parseFloat(item.tmdb?.vote_average || item.vote_average || '0') || undefined,
+        voteCount: parseInt(item.tmdb?.vote_count || item.vote_count || '0') || undefined,
         totalEpisodes: this.extractTotalEpisodes(item.episode_current, item.episode_total),
         currentEpisode: this.extractCurrentEpisode(item.episode_current),
         year: item.year || new Date().getFullYear(),
@@ -528,12 +630,24 @@ export class PhimAPIService {
         genres: Array.isArray(item.category) 
           ? item.category.map((cat: any) => cat.name || cat).filter(Boolean)
           : [item.category?.name || 'Phim'],
+        categories: Array.isArray(item.category) 
+          ? item.category.map((cat: any) => ({
+              id: cat.id || cat.slug || cat.name,
+              name: cat.name || cat,
+              slug: cat.slug || cat.name?.toLowerCase().replace(/\s+/g, '-') || ''
+            })).filter(Boolean)
+          : item.category ? [{
+              id: item.category.id || item.category.slug || item.category.name || 'default',
+              name: item.category.name || item.category || 'Phim',
+              slug: item.category.slug || item.category.name?.toLowerCase().replace(/\s+/g, '-') || 'phim'
+            }] : [],
         duration: this.parseDuration(item.time) || 120,
         quality: item.quality || item.lang || 'HD',
         isCompleted: item.status === 'completed' || item.episode_current === item.episode_total,
         episodes: this.transformEpisodes(item.episodes || []),
         views: item.view || 0,
-        type: item.type === 'series' || item.type === 'hoathinh' ? 'tv' : 'movie',
+        type: this.determineMovieType(item), // Sử dụng logic cải thiện để xác định type
+        apiType: item.type, // Giữ nguyên type từ API để debug
         tmdbId: item.tmdb?.id,
         trailer: item.trailer_url || '',
         releaseDate: item.created?.time || new Date().toISOString(),
@@ -627,6 +741,90 @@ export class PhimAPIService {
     
     const match = timeString.match(/(\d+)\s*ph[ú|u]t/)
     return match ? parseInt(match[1]) : 120
+  }
+
+  // Xác định type phim dựa trên nhiều thông tin
+  private static determineMovieType(item: any): 'movie' | 'tv' | 'single' | 'series' | 'hoathinh' {
+    // Ưu tiên type từ API nếu có
+    if (item.type) {
+      const mappedType = this.mapApiType(item.type)
+      if (mappedType !== 'movie') {
+        return mappedType
+      }
+    }
+
+    // Xác định dựa trên episodes
+    const totalEpisodes = this.extractTotalEpisodes(item.episode_current, item.episode_total)
+    const hasMultipleEpisodes = totalEpisodes > 1
+    const hasEpisodesData = item.episodes && Array.isArray(item.episodes) && item.episodes.length > 0
+
+    // Kiểm tra nếu có nhiều tập -> series
+    if (hasMultipleEpisodes || hasEpisodesData) {
+      // Kiểm tra xem có phải hoạt hình không
+      if (this.isAnimation(item)) {
+        return 'hoathinh'
+      }
+      return 'series'
+    }
+
+    // Kiểm tra hoạt hình cho phim lẻ
+    if (this.isAnimation(item)) {
+      return 'hoathinh'
+    }
+
+    // Mặc định là phim lẻ
+    return 'single'
+  }
+
+  // Kiểm tra xem có phải hoạt hình không
+  private static isAnimation(item: any): boolean {
+    const title = (item.name || item.title || '').toLowerCase()
+    const description = (item.content || item.description || '').toLowerCase()
+    const genres = Array.isArray(item.category) 
+      ? item.category.map((cat: any) => (cat.name || cat || '').toLowerCase()).join(' ')
+      : (item.category?.name || '').toLowerCase()
+
+    const animationKeywords = ['hoạt hình', 'anime', 'animation', 'cartoon', 'animated']
+    
+    return animationKeywords.some(keyword => 
+      title.includes(keyword) || 
+      description.includes(keyword) || 
+      genres.includes(keyword)
+    )
+  }
+
+  // Map API type sang internal type system
+  private static mapApiType(apiType: string): 'movie' | 'tv' | 'single' | 'series' | 'hoathinh' {
+    if (!apiType) return 'movie'
+    
+    const type = apiType.toLowerCase()
+    
+    // Giữ nguyên các type từ API
+    switch (type) {
+      case 'single':
+        return 'single'  // Phim lẻ
+      case 'series':
+        return 'series'  // Phim bộ
+      case 'hoathinh':
+        return 'hoathinh' // Phim hoạt hình
+      case 'tv':
+        return 'tv'
+      case 'movie':
+        return 'movie'
+      default:
+        // Fallback logic cho các type khác
+        if (type.includes('series') || type.includes('bo') || type.includes('phim-bo')) {
+          return 'series'
+        }
+        if (type.includes('hoat') || type.includes('anime')) {
+          return 'hoathinh'
+        }
+        if (type.includes('le') || type.includes('phim-le')) {
+          return 'single'
+        }
+        // Không default thành 'single', để giá trị gốc hoặc 'movie'
+        return 'movie'
+    }
   }
 
   // Extract episode number từ tên tập

@@ -78,11 +78,16 @@ export default function HeroSection() {
             
             {/* Movie Details Row - Tags like the reference */}
             <div className="flex flex-wrap items-center gap-3 mb-6">
-              {/* IMDb Rating Badge */}
-              <div className="flex items-center gap-1 bg-yellow-500 text-black px-3 py-1 rounded-md font-bold text-sm">
-                <span>IMDb</span>
-                <span>{(currentMovie.imdbRating || currentMovie.rating).toFixed(1)}</span>
-              </div>
+              {/* Rating Badge - Ưu tiên TMDB vote_average, rồi IMDb */}
+              {(currentMovie.voteAverage || currentMovie.imdbRating || currentMovie.rating) > 0 && (
+                <div className="flex items-center gap-1 bg-yellow-500 text-black px-3 py-1 rounded-md font-bold text-sm">
+                  <span>{currentMovie.voteAverage ? 'TMDB' : 'IMDb'}</span>
+                  <span>{(currentMovie.voteAverage || currentMovie.imdbRating || currentMovie.rating).toFixed(1)}</span>
+                  {currentMovie.voteCount && currentMovie.voteCount > 10 && (
+                    <span className="text-xs opacity-75">({currentMovie.voteCount})</span>
+                  )}
+                </div>
+              )}
               
               {/* Age Rating */}
               <div className="bg-gray-600 text-white px-3 py-1 rounded-md font-bold text-sm">

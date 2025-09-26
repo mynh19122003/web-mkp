@@ -9,11 +9,14 @@ export interface Movie {
   backdrop?: string;
   description: string;
   genres: string[];
+  categories?: Category[]; // Thêm categories từ API
   country: string;
   duration: number; // in minutes
   quality: string; // HD, 4K, etc.
   rating: number; // 0-10
   imdbRating?: number; // IMDb rating 0-10
+  voteAverage?: number; // TMDB vote_average (0-10)
+  voteCount?: number; // TMDB vote_count
   totalEpisodes?: number; // Total number of episodes for TV series
   currentEpisode?: number; // Current episode number
   episodes?: Episode[];
@@ -24,7 +27,8 @@ export interface Movie {
   trailer?: string;
   videoUrl?: string;
   views?: number;
-  type?: 'movie' | 'tv';
+  type?: 'movie' | 'tv' | 'single' | 'series' | 'hoathinh'; // Thêm các type từ API
+  apiType?: string; // Raw type từ API để debug
   tmdbId?: number;
 }
 

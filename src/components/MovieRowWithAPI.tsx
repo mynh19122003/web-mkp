@@ -6,18 +6,37 @@ import { useRef, useState, useCallback } from 'react'
 
 interface MovieRowWithAPIProps {
   title: string
-  type?: 'new' | 'movie' | 'tv' | 'cinema' | 'anime' | 'korean' | 'chinese' | 'western'
+  type?: 'new' | 'movie' | 'single' | 'series' | 'tv' | 'cinema' | 'anime' | 'korean' | 'chinese' | 'western' | 'category'
   size?: 'small' | 'medium' | 'large'
   page?: number
+  categorySlug?: string // Thêm categorySlug để lọc theo category từ API
+  
+  // 🏆 PHÂN LOẠI THEO RATING (Điểm đánh giá):
+  // - "excellent" (>= 8.5) - Phim xuất sắc, masterpiece
+  // - "high" (>= 8.0) - Phim chất lượng cao, đáng xem
+  // - "good" (>= 7.0) - Phim tốt, giải trí
+  // - "moderate" (6.0-7.9) - Phim ổn, xem được
+  rating?: string
+  
+  // 👥 PHÂN LOẠI THEO VOTE COUNT (Độ phổ biến):
+  // - "viral" (>= 5000) - Phim viral, siêu hot
+  // - "popular" (>= 1000) - Phim phổ biến, nhiều người xem
+  // - "trending" (>= 500) - Phim đang trending, hot
+  // - "niche" (100-500) - Phim thích hợp, có fan riêng
+  // - "fresh" (< 100) - Phim mới, ít người biết
+  voteCount?: string
 }
 
 export default function MovieRowWithAPI({ 
   title, 
   type = 'new', 
   size = 'medium',
-  page = 1 
+  page = 1,
+  categorySlug,
+  rating,
+  voteCount 
 }: MovieRowWithAPIProps) {
-  const { movies, loading, error } = useMovies({ type, page })
+  const { movies, loading, error } = useMovies({ type, page, categorySlug, rating, voteCount })
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [startX, setStartX] = useState(0)

@@ -4,9 +4,12 @@ import { useState, useEffect } from 'react'
 import { Movie } from '@/types/movie'
 
 interface UseMoviesOptions {
-  type?: 'new' | 'movie' | 'tv' | 'cinema' | 'anime' | 'korean' | 'chinese' | 'western' | 'search'
+  type?: 'new' | 'movie' | 'single' | 'series' | 'tv' | 'cinema' | 'anime' | 'korean' | 'chinese' | 'western' | 'search' | 'category'
   page?: number
   keyword?: string
+  categorySlug?: string // Thêm categorySlug để lọc theo category
+  rating?: string // Thêm rating filter
+  voteCount?: string // Thêm voteCount filter
   autoFetch?: boolean
 }
 
@@ -15,6 +18,9 @@ export const useMovies = (options: UseMoviesOptions = {}) => {
     type = 'new',
     page = 1,
     keyword = '',
+    categorySlug = '',
+    rating = '',
+    voteCount = '',
     autoFetch = true
   } = options
 
@@ -34,6 +40,18 @@ export const useMovies = (options: UseMoviesOptions = {}) => {
 
       if (keyword && type === 'search') {
         params.append('keyword', keyword)
+      }
+
+      if (categorySlug && type === 'category') {
+        params.append('categorySlug', categorySlug)
+      }
+
+      if (rating) {
+        params.append('rating', rating)
+      }
+
+      if (voteCount) {
+        params.append('voteCount', voteCount)
       }
 
       const response = await fetch(`/api/movies?${params}`)
@@ -56,7 +74,7 @@ export const useMovies = (options: UseMoviesOptions = {}) => {
     if (autoFetch) {
       fetchMovies()
     }
-  }, [type, page, keyword, autoFetch])
+  }, [type, page, keyword, categorySlug, rating, voteCount, autoFetch])
 
   return {
     movies,

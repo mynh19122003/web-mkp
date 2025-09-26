@@ -2,6 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Play, Clock, Star, Calendar, Plus, ChevronDown } from 'lucide-react'
 import { Movie } from '@/types/movie'
+import { formatMovieType, getTypeColor } from '@/lib/utils'
 
 interface MovieCardProps {
   movie: Movie
@@ -37,11 +38,24 @@ export default function MovieCard({ movie, size = 'medium' }: MovieCardProps) {
           {movie.quality}
         </div>
 
-        {/* IMDb Rating Badge */}
-        <div className="absolute top-2 right-2 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded flex items-center space-x-1">
-          <span>IMDb</span>
-          <span>{(movie.imdbRating || movie.rating).toFixed(1)}</span>
-        </div>
+        {/* Type Badge - Bỏ hiển thị type để giao diện sạch hơn */}
+        {/* <div className={`absolute top-12 left-2 ${getTypeColor(movie.apiType, movie.type)} text-white text-xs font-bold px-2 py-1 rounded shadow-lg`}>
+          {formatMovieType(movie.apiType, movie.type)}
+        </div> */}
+
+        {/* Rating Badge - Ưu tiên vote_average (TMDB), rồi IMDb, không hiển thị vote count */}
+        {(movie.voteAverage || movie.imdbRating || movie.rating) > 0 ? (
+          <div className="absolute top-2 right-2 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded">
+            <div className="flex items-center space-x-1">
+              <span>{movie.voteAverage ? 'TMDB' : 'IMDb'}</span>
+              <span>{(movie.voteAverage || movie.imdbRating || movie.rating).toFixed(1)}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">
+            {movie.year}
+          </div>
+        )}
 
         {/* Play Overlay */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
@@ -50,17 +64,8 @@ export default function MovieCard({ movie, size = 'medium' }: MovieCardProps) {
           </div>
         </div>
 
-        {/* Episode Count for TV Series / Duration for Movies */}
-        {movie.type === 'tv' ? (
-          <div className="absolute bottom-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">
-            {movie.currentEpisode && movie.totalEpisodes 
-              ? `${movie.currentEpisode}/${movie.totalEpisodes} tập`
-              : movie.totalEpisodes 
-                ? `${movie.totalEpisodes} tập`
-                : 'Phim bộ'
-            }
-          </div>
-        ) : (
+        {/* Duration Badge - Chỉ hiển thị thời lượng nếu có */}
+        {movie.duration > 0 && (
           <div className="absolute bottom-2 right-2 bg-gray-700 text-white text-xs font-bold px-2 py-1 rounded flex items-center space-x-1">
             <Clock className="w-3 h-3" />
             <span>{Math.floor(movie.duration / 60)}h {movie.duration % 60}m</span>
@@ -97,26 +102,12 @@ export default function MovieCard({ movie, size = 'medium' }: MovieCardProps) {
           </div>
           <div className="flex items-center space-x-2 text-white text-opacity-80 text-xs">
             <span>{movie.year}</span>
-            {/* Hiển thị tập phim cho phim bộ, thời lượng cho phim lẻ */}
-            {movie.type === 'tv' ? (
+            {/* Bỏ hiển thị type và episode count để giao diện sạch hơn */}
+            {movie.duration > 0 && (
               <>
                 <span>•</span>
-                <span>
-                  {movie.currentEpisode && movie.totalEpisodes 
-                    ? `${movie.currentEpisode}/${movie.totalEpisodes} tập`
-                    : movie.totalEpisodes 
-                      ? `${movie.totalEpisodes} tập`
-                      : 'Phim bộ'
-                  }
-                </span>
+                <span>{Math.floor(movie.duration / 60)}h {movie.duration % 60}m</span>
               </>
-            ) : (
-              movie.duration > 0 && (
-                <>
-                  <span>•</span>
-                  <span>{Math.floor(movie.duration / 60)}h {movie.duration % 60}m</span>
-                </>
-              )
             )}
             <span>•</span>
             <span className="bg-gray-700 px-1 rounded text-xs">{movie.quality || 'HD'}</span>
