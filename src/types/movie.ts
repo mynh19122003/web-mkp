@@ -11,6 +11,7 @@ export interface Movie {
   genres: string[];
   categories?: Category[]; // Thêm categories từ API
   country: string;
+  countryData?: Country[]; // Raw country data từ API cho filtering
   duration: number; // in minutes
   quality: string; // HD, 4K, etc.
   rating: number; // 0-10

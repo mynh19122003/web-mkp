@@ -6,15 +6,18 @@ import Link from 'next/link'
 import { Play, Info, Volume2, VolumeX, Plus, ThumbsUp, X, Calendar, Clock, Users } from 'lucide-react'
 import { Movie } from '@/types/movie'
 import { useHeroMovies } from '@/hooks/useMovies'
+import { PhimAPIService } from '@/services/kkphim'
 
 export default function HeroSection() {
-  // Lấy phim chiếu rạp từ PhimAPI
+  // OPTIMIZED: Hero movies với single API call
   const { movies: apiMovies, loading } = useHeroMovies('cinema')
-  const heroMovies = apiMovies.length > 0 ? apiMovies.slice(0, 5) : []
+  const heroMovies = apiMovies.length > 0 ? apiMovies.slice(0, 4) : [] // Reduce to 4 for faster loading
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isMuted, setIsMuted] = useState(true)
   const [showMovieInfo, setShowMovieInfo] = useState(false)
+  const [imagesLoaded, setImagesLoaded] = useState<Set<number>>(new Set())
 
+  // OPTIMIZED: Faster carousel interval
   useEffect(() => {
     if (heroMovies.length <= 1) return
     
@@ -22,17 +25,52 @@ export default function HeroSection() {
       setCurrentIndex((prevIndex) => 
         prevIndex === heroMovies.length - 1 ? 0 : prevIndex + 1
       )
-    }, 8000) // Tăng thời gian để user có thể đọc content
+    }, 6000) // Reduced from 8s to 6s
 
     return () => clearInterval(timer)
   }, [heroMovies.length])
+
+  // OPTIMIZED: WebP image preloading
+  useEffect(() => {
+    heroMovies.forEach((movie, index) => {
+      if (movie.thumbnail || movie.poster) {
+        const img = document.createElement('img')
+        img.onload = () => {
+          setImagesLoaded(prev => new Set(prev).add(index))
+        }
+        // Preload WebP optimized images
+        const originalUrl = movie.thumbnail || movie.poster
+        img.src = PhimAPIService.convertToWebP(originalUrl, 95) // High quality for hero
+      }
+    })
+  }, [heroMovies])
+
+  // Get optimized hero image URL
+  const getHeroImageUrl = (movie: Movie) => {
+    const originalUrl = movie.thumbnail || movie.poster
+    if (originalUrl) {
+      return PhimAPIService.convertToWebP(originalUrl, 95) // High quality for hero
+    }
+    return 'https://phimapi.com/image.php?url=https%3A//phimimg.com/upload/vod/20220309-1/2022030915165476.jpg&quality=95&format=webp'
+  }
 
 
 
   if (loading) {
     return (
-      <section className="relative h-screen overflow-hidden bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-xl">Đang tải...</div>
+      <section className="relative h-screen overflow-hidden bg-gray-900">
+        {/* Optimized loading skeleton */}
+        <div className="absolute inset-0 animate-pulse">
+          <div className="w-full h-full bg-gradient-to-r from-gray-800 to-gray-700" />
+          <div className="absolute bottom-32 left-12 space-y-4">
+            <div className="w-80 h-16 bg-gray-600 rounded-lg" />
+            <div className="w-60 h-4 bg-gray-700 rounded" />
+            <div className="flex space-x-4 mt-8">
+              <div className="w-32 h-12 bg-gray-600 rounded-lg" />
+              <div className="w-32 h-12 bg-gray-700 rounded-lg" />
+            </div>
+          </div>
+        </div>
       </section>
     )
   }
@@ -46,13 +84,14 @@ export default function HeroSection() {
       {/* Full Screen Background Image */}
       <div className="absolute inset-0">
         <Image
-          src={currentMovie.thumbnail || currentMovie.poster || 'https://phimimg.com/upload/vod/20220309-1/2022030915165476.jpg'}
+          src={getHeroImageUrl(currentMovie)}
           alt={currentMovie.title}
           fill
           className="object-cover object-center"
           priority
-          quality={90}
-          unoptimized
+          quality={95}
+          placeholder="blur"
+          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
           sizes="100vw"
         />
         {/* Gradient Overlays for text readability */}
@@ -216,7 +255,7 @@ export default function HeroSection() {
               onClick={() => setCurrentIndex(index)}
             >
               <Image
-                src={movie.poster || movie.thumbnail || 'https://phimimg.com/upload/vod/20220309-1/2022030915165476.jpg'}
+                src={getHeroImageUrl(movie)}
                 alt={movie.title}
                 fill
                 className="object-cover rounded"
@@ -273,7 +312,7 @@ export default function HeroSection() {
                 {/* Movie Poster */}
                 <div className="flex-shrink-0">
                   <Image
-                    src={currentMovie.poster || '/placeholder-movie.jpg'}
+                    src={getHeroImageUrl(currentMovie)}
                     alt={currentMovie.title}
                     width={200}
                     height={300}

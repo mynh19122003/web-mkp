@@ -103,6 +103,8 @@ async function getMoviesByType(type: string, page: number, keyword: string, cate
 }
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now()
+  
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'new';
@@ -114,51 +116,65 @@ export async function GET(request: NextRequest) {
 
     let movies: Movie[] = [];
 
-    // Logic: Parameters có thể standalone hoặc kết hợp theo thứ tự
+    // OPTIMIZED: Simplified logic với early returns
     if (rating || voteCount) {
       if (type && type !== 'new') {
-        // Có type + filter → Lấy theo type trước
+        // Type-specific với filters
         movies = await getMoviesByType(type, page, keyword, categorySlug);
+        movies = filterMoviesByRatingAndVoteCount(movies, rating, voteCount);
       } else {
-        // Chỉ có filter → Lấy từ tất cả nguồn
-        const [newMovies, singleMovies, seriesMovies, cinemaMovies, koreanMovies, chineseMovies, westernMovies, animeMovies] = await Promise.all([
-          PhimAPIService.getNewMovies(page),
-          PhimAPIService.getSingleMovies(page),
-          PhimAPIService.getSeriesMovies(page), 
-          PhimAPIService.getCinemaMovies(page),
-          PhimAPIService.getMoviesByCountry('korean', page),
-          PhimAPIService.getMoviesByCountry('chinese', page),
-          PhimAPIService.getMoviesByCountry('western', page),
+        // Global filtering - REDUCED concurrent requests để giảm load
+        const [trendingMovies, newMovies, animeMovies] = await Promise.all([
+          PhimAPIService.getTrendingMovies(page),
+          PhimAPIService.getNewMovies(page), 
           PhimAPIService.getHotAnime(page)
         ]);
         
-        const allMovies = [...newMovies, ...singleMovies, ...seriesMovies, ...cinemaMovies, ...koreanMovies, ...chineseMovies, ...westernMovies, ...animeMovies];
-        movies = allMovies.filter((movie, index, self) => 
-          index === self.findIndex(m => m.id === movie.id || m.slug === movie.slug)
-        );
+        const combinedMovies = [...trendingMovies, ...newMovies, ...animeMovies]
+        movies = combinedMovies
+          .filter((movie, index, self) => index === self.findIndex(m => m.id === movie.id))
+          .slice(0, 50) // Limit để optimize performance
+          
+        movies = filterMoviesByRatingAndVoteCount(movies, rating, voteCount);
       }
-      // Áp dụng filter
-      movies = filterMoviesByRatingAndVoteCount(movies, rating, voteCount);
     } else {
-      // Chỉ có type hoặc không có gì
+      // Fast path: Simple type-based requests
       movies = await getMoviesByType(type, page, keyword, categorySlug);
     }
 
-    return NextResponse.json({
+    const processingTime = Date.now() - startTime
+
+    // Smart caching strategy
+    const response = NextResponse.json({
       success: true,
       data: movies,
       page,
       type,
-      total: movies.length
+      total: movies.length,
+      performance: {
+        processingTime,
+        optimized: true
+      }
     });
 
+    // Dynamic cache headers
+    const cacheTime = type === 'new' ? 120 : 300 // New: 2min, Others: 5min
+    response.headers.set('Cache-Control', `public, max-age=${cacheTime}, stale-while-revalidate=${cacheTime * 2}`)
+    response.headers.set('X-Processing-Time', `${processingTime}ms`)
+
+    return response
+
   } catch (error) {
-    console.error('Lỗi API movies:', error);
+    console.error('Movies API error:', error);
     return NextResponse.json(
       { 
         success: false, 
         error: 'Không thể tải danh sách phim',
-        data: [] 
+        data: [],
+        performance: {
+          processingTime: Date.now() - startTime,
+          error: true
+        }
       },
       { status: 500 }
     );

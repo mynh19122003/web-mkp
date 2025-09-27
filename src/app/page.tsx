@@ -25,7 +25,7 @@ export default function Home() {
         <MovieRowWithAPI title="� PHIM LẺ" type="single" />
         
         {/* Phim Hoạt Hình */}
-        <MovieRowWithAPI title="🎨 PHIM HOẠT HÌNH" type="anime" />
+        <MovieRowWithAPI title="🎨 ANIME" type="anime" />
         
         {/* Phim Theo Quốc Gia */}
         <MovieRowWithAPI title="🇰🇷 PHIM HÀN QUỐC" type="korean" />
@@ -33,27 +33,20 @@ export default function Home() {
         <MovieRowWithAPI title="🇺🇸 PHIM ÂU MỸ" type="western" />
         
         {/* 
-        ═══════════════════════════════════════════════════════════════════════════════
-        💡 GỢI Ý THÊM PHẦN MỚI:
-        ═══════════════════════════════════════════════════════════════════════════════
+        💡 GỢI Ý THÊM:
         
-        🎬 PHIM THEO THỂ LOẠI (sử dụng categorySlug):
-        <MovieRowWithAPI title="⚔️ PHIM HÀNH ĐỘNG" type="category" categorySlug="hanh-dong" />
-        <MovieRowWithAPI title="💕 PHIM TÌNH CẢM" type="category" categorySlug="tinh-cam" />
-        <MovieRowWithAPI title="😂 PHIM HÀI" type="category" categorySlug="hai-huoc" />
-        <MovieRowWithAPI title="👻 PHIM KINH DỊ" type="category" categorySlug="kinh-di" />
+        🎬 THEO THỂ LOẠI:
+        <MovieRowWithAPI title="⚔️ PHIM HÀNH ĐỘNG" categorySlug="hanh-dong" />
+        <MovieRowWithAPI title="💕 PHIM TÌNH CẢM" categorySlug="tinh-cam" />
+        <MovieRowWithAPI title="👻 PHIM KINH DỊ" categorySlug="kinh-di" />
         
-        🏆 PHIM THEO CHẤT LƯỢNG:
-        <MovieRowWithAPI title="🏆 PHIM ĐỈNH CAO" type="new" rating="excellent" voteCount="popular" />
-        <MovieRowWithAPI title="⭐ PHIM CHẤT LƯỢNG" type="single" rating="high" voteCount="trending" />
-        <MovieRowWithAPI title="🔥 PHIM ĐANG HOT" type="new" voteCount="viral" />
-        <MovieRowWithAPI title="💎 PHIM THÍCH HỢP" type="series" rating="good" voteCount="niche" />
+        🏆 THEO CHẤT LƯỢNG:
+        <MovieRowWithAPI title="🏆 PHIM ĐỈNH CAO" rating="excellent" voteCount="popular" />
+        <MovieRowWithAPI title="🔥 PHIM HOT" voteCount="viral" />
         
-        📈 PHIM THEO TRẠNG THÁI:
-        <MovieRowWithAPI title="🆕 PHIM MỚI NHẤT" type="new" voteCount="fresh" />
-        <MovieRowWithAPI title="📊 PHIM TRENDING" type="new" voteCount="trending" />
-        <MovieRowWithAPI title="🌟 PHIM NỔI TIẾNG" type="single" voteCount="popular" />
-        ═══════════════════════════════════════════════════════════════════════════════
+        📈 KHÁC:
+        <MovieRowWithAPI title="🆕 MỚI NHẤT" voteCount="fresh" />
+        <MovieRowWithAPI title="📊 TRENDING" voteCount="trending" />
         */}
       </div>
     </div>
