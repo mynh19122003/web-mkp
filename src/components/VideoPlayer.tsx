@@ -4,15 +4,20 @@ import { useState } from 'react'
 import { Play, Pause, Volume2, VolumeX, Maximize, Settings, Download } from 'lucide-react'
 
 interface VideoPlayerProps {
+  src?: string
   videoUrl?: string
   title: string
   thumbnail?: string
+  poster?: string
 }
 
-export default function VideoPlayer({ videoUrl, title, thumbnail }: VideoPlayerProps) {
+export default function VideoPlayer({ src, videoUrl, title, thumbnail, poster }: VideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [showControls, setShowControls] = useState(true)
+  
+  const finalVideoUrl = src || videoUrl
+  const finalPoster = poster || thumbnail
 
   const togglePlay = () => {
     setIsPlaying(!isPlaying)
@@ -22,13 +27,13 @@ export default function VideoPlayer({ videoUrl, title, thumbnail }: VideoPlayerP
     setIsMuted(!isMuted)
   }
 
-  if (!videoUrl) {
+  if (!finalVideoUrl) {
     return (
       <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden group">
-        {thumbnail && (
+        {finalPoster && (
           <div 
             className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${thumbnail})` }}
+            style={{ backgroundImage: `url(${finalPoster})` }}
           />
         )}
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -49,13 +54,14 @@ export default function VideoPlayer({ videoUrl, title, thumbnail }: VideoPlayerP
       {/* Video Element */}
       <video
         className="w-full h-full object-cover"
-        poster={thumbnail}
+        poster={finalPoster}
         muted={isMuted}
+        controls
         onMouseEnter={() => setShowControls(true)}
         onMouseLeave={() => setShowControls(false)}
       >
-        <source src={videoUrl} type="video/mp4" />
-        <source src={videoUrl} type="application/x-mpegURL" />
+        <source src={finalVideoUrl} type="application/x-mpegURL" />
+        <source src={finalVideoUrl} type="video/mp4" />
         Trình duyệt của bạn không hỗ trợ video.
       </video>
 

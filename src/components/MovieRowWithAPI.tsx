@@ -2,6 +2,7 @@
 
 import { useMovies } from '@/hooks/useMovies'
 import MovieCard from './MovieCard'
+import WatchlistChecker from './WatchlistChecker'
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -179,6 +180,9 @@ export default function MovieRowWithAPI({
 
   return (
     <div className="group/row relative mb-12">
+      {/* Disabled: Batch check watchlist for all movies in this row - now using lazy loading */}
+      {/* <WatchlistChecker movies={movies} lazy={true} /> */}
+      
       {/* Section Title */}
       <h2 className="text-white text-2xl font-bold mb-4 px-4 sm:px-6 lg:px-8 text-shadow-hero">
         {title}

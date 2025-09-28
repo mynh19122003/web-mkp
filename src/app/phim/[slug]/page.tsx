@@ -105,10 +105,13 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-4">
-                <button className="bg-white text-black font-bold py-3 px-8 rounded hover:bg-gray-200 transition-all duration-200 flex items-center gap-3 shadow-lg hover:scale-105 hover:shadow-xl">
+                <a 
+                  href={`/watch/${movie.slug || movie.id}`}
+                  className="bg-white text-black font-bold py-3 px-8 rounded hover:bg-gray-200 transition-all duration-200 flex items-center gap-3 shadow-lg hover:scale-105 hover:shadow-xl"
+                >
                   <Play className="w-6 h-6 fill-current" />
                   Xem Phim
-                </button>
+                </a>
                 
                 <SimpleWatchlistButton 
                   movieId={movie.id} 

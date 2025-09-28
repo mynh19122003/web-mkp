@@ -198,7 +198,9 @@ export class PhimAPIService {
       console.log(`🔍 API response status: ${data.status}, has movie: ${!!data.movie}`)
       
       if (data.status && data.movie) {
-        const transformedMovie = this.transformSingleMovieDetail(data.movie)
+        // Attach episodes data from root level to movie object
+        const movieData = { ...data.movie, episodes: data.episodes }
+        const transformedMovie = this.transformSingleMovieDetail(movieData)
         console.log(`✅ Successfully transformed movie: ${transformedMovie?.title}`)
         return transformedMovie
       }
@@ -824,8 +826,10 @@ export class PhimAPIService {
     }
 
     // Thêm xử lý episodes chi tiết
+    console.log('🔍 Episodes data:', item.episodes ? `Found ${item.episodes.length} servers` : 'No episodes found')
     if (item.episodes && Array.isArray(item.episodes)) {
       movie.episodes = this.transformEpisodes(item.episodes)
+      console.log(`✅ Transformed ${movie.episodes.length} servers with episodes`)
     }
 
     return movie

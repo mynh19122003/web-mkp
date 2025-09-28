@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Check, Loader2 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
+import { useWatchlist } from '@/contexts/WatchlistContext'
 
 interface SimpleWatchlistButtonProps {
   movieId: string
@@ -18,43 +19,20 @@ export default function SimpleWatchlistButton({
   variant = 'button' 
 }: SimpleWatchlistButtonProps) {
   const { data: session } = useSession()
+  const { watchlistStatus, toggleWatchlist, checkWatchlistStatus } = useWatchlist()
   const [isToggling, setIsToggling] = useState(false)
-  const [isInWatchlist, setIsInWatchlist] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [hasChecked, setHasChecked] = useState(false)
   
-  const isDisabled = loading || isToggling || !session
+  const isInWatchlist = watchlistStatus[movieId] || false
+  const isDisabled = isToggling || !session
 
-  // Load watchlist status khi component mount - chỉ gọi 1 lần
-  useEffect(() => {
-    let isMounted = true
-    
-    const checkWatchlistStatus = async () => {
-      if (!session?.user?.email || !movieId) return
-      
-      try {
-        setLoading(true)
-        const response = await fetch(`/api/watchlist/check?movieId=${movieId}`)
-        if (response.ok && isMounted) {
-          const data = await response.json()
-          setIsInWatchlist(data.isInWatchlist || false)
-        }
-      } catch (error) {
-        console.error('Error checking watchlist status:', error)
-      } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
-      }
+  // Check watchlist status on first hover/focus
+  const handleCheckStatus = async () => {
+    if (!hasChecked && session?.user?.email && movieId) {
+      setHasChecked(true)
+      await checkWatchlistStatus([movieId])
     }
-
-    if (session?.user?.email && movieId) {
-      checkWatchlistStatus()
-    }
-
-    return () => {
-      isMounted = false
-    }
-  }, [session?.user?.email, movieId]) // Chỉ dependency cần thiết
+  }
 
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -68,30 +46,7 @@ export default function SimpleWatchlistButton({
     setIsToggling(true)
     
     try {
-      let success = false
-      if (isInWatchlist) {
-        // Remove from watchlist
-        const response = await fetch(`/api/watchlist?movieId=${movieId}`, {
-          method: 'DELETE'
-        })
-        success = response.ok
-        if (success) {
-          setIsInWatchlist(false)
-          console.log(`Đã xóa "${movieTitle}" khỏi danh sách của tôi`)
-        }
-      } else {
-        // Add to watchlist
-        const response = await fetch('/api/watchlist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ movieId })
-        })
-        success = response.ok
-        if (success) {
-          setIsInWatchlist(true)
-          console.log(`Đã thêm "${movieTitle}" vào danh sách của tôi`)
-        }
-      }
+      const success = await toggleWatchlist(movieId, movieTitle)
       
       if (!success) {
         alert('Có lỗi xảy ra, vui lòng thử lại')
@@ -130,6 +85,8 @@ export default function SimpleWatchlistButton({
     return (
       <button
         onClick={handleClick}
+        onMouseEnter={handleCheckStatus}
+        onFocus={handleCheckStatus}
         disabled={isDisabled}
         className={`
           ${getSizeClasses()} 
@@ -154,6 +111,8 @@ export default function SimpleWatchlistButton({
   return (
     <button
       onClick={handleClick}
+      onMouseEnter={handleCheckStatus}
+      onFocus={handleCheckStatus}
       disabled={isDisabled}
       className={`
         flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200

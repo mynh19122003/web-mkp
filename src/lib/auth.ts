@@ -1,10 +1,19 @@
 import GoogleProvider from 'next-auth/providers/google'
+import FacebookProvider from 'next-auth/providers/facebook'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
-import { getUserByEmail } from '@/lib/memoryDb'
+import { getUserByEmail, createUser, getUserById } from '@/lib/memoryDb'
 
 export const authOptions = {
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    }),
+    FacebookProvider({
+      clientId: process.env.FACEBOOK_CLIENT_ID || '',
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET || '',
+    }),
     CredentialsProvider({
       name: 'credentials',
       credentials: {
@@ -55,7 +64,7 @@ export const authOptions = {
     strategy: 'jwt' as const
   },
   callbacks: {
-    async jwt({ token, user }: any) {
+    async jwt({ token, user, account }: any) {
       if (user) {
         token.id = user.id
       }
@@ -68,7 +77,31 @@ export const authOptions = {
       return session
     },
     async signIn({ user, account, profile }: any) {
-      // Cho phép đăng nhập
+      if (account?.provider === 'google' || account?.provider === 'facebook') {
+        try {
+          // Kiểm tra xem user đã tồn tại chưa
+          const existingUser = await getUserByEmail(user.email)
+          
+          if (!existingUser) {
+            // Tạo user mới cho OAuth
+            const newUser = await createUser({
+              name: user.name || '',
+              email: user.email || '',
+              image: user.image || '',
+              provider: account.provider
+            })
+            
+            if (newUser) {
+              user.id = newUser._id?.toString() || newUser.email
+            }
+          } else {
+            user.id = existingUser._id?.toString() || existingUser.email
+          }
+        } catch (error) {
+          console.error('OAuth sign in error:', error)
+          return false
+        }
+      }
       return true
     }
   },

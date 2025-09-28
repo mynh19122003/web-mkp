@@ -215,7 +215,7 @@ export default function HeroSection() {
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-3 mb-6">
               <Link
-                href={`/phim/${currentMovie.slug || currentMovie.id}`}
+                href={`/watch/${currentMovie.slug || currentMovie.id}`}
                 className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-md font-bold text-base hover:bg-white/90 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
               >
                 <Play className="w-5 h-5 fill-current" />

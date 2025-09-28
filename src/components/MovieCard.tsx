@@ -94,7 +94,7 @@ export default function MovieCard({ movie, size = 'medium' }: MovieCardProps) {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  window.location.href = `/phim/${movie.slug || movie.id}`;
+                  window.location.href = `/watch/${movie.slug || movie.id}`;
                 }}
                 className="bg-white text-black p-2 rounded-full hover:scale-110 transition-all duration-200 shimmer"
               >

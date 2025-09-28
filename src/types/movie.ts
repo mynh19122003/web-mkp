@@ -20,7 +20,7 @@ export interface Movie {
   voteCount?: number; // TMDB vote_count
   totalEpisodes?: number; // Total number of episodes for TV series
   currentEpisode?: number; // Current episode number
-  episodes?: Episode[];
+  episodes?: ServerGroup[];
   isCompleted: boolean;
   releaseDate?: string;
   director?: string;
@@ -40,6 +40,11 @@ export interface Episode {
   duration: number;
   videoUrl: string;
   thumbnail: string;
+}
+
+export interface ServerGroup {
+  serverName: string;
+  episodes: Episode[];
 }
 
 export interface Category {
