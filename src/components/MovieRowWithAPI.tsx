@@ -2,7 +2,8 @@
 
 import { useMovies } from '@/hooks/useMovies'
 import MovieCard from './MovieCard'
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface MovieRowWithAPIProps {
   title: string
@@ -41,27 +42,102 @@ export default function MovieRowWithAPI({
   const [isDragging, setIsDragging] = useState(false)
   const [startX, setStartX] = useState(0)
   const [scrollLeft, setScrollLeft] = useState(0)
+  const [showLeftArrow, setShowLeftArrow] = useState(false)
+  const [showRightArrow, setShowRightArrow] = useState(true)
+  const [isScrollable, setIsScrollable] = useState(false)
 
+  // Check if content is scrollable
+  useEffect(() => {
+    const checkScrollable = () => {
+      if (!scrollRef.current) return
+      const { scrollWidth, clientWidth } = scrollRef.current
+      setIsScrollable(scrollWidth > clientWidth)
+    }
+
+    checkScrollable()
+    window.addEventListener('resize', checkScrollable)
+    return () => window.removeEventListener('resize', checkScrollable)
+  }, [movies])
+
+  // Update arrow visibility on scroll
+  const handleScroll = useCallback(() => {
+    if (!scrollRef.current) return
+    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current
+    setShowLeftArrow(scrollLeft > 0)
+    setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 10)
+  }, [])
+
+  // Smooth scroll functions
+  const scrollToLeft = useCallback(() => {
+    if (!scrollRef.current) return
+    const cardWidth = size === 'small' ? 180 : size === 'large' ? 320 : 240
+    const scrollAmount = cardWidth * 3 // Scroll 3 cards at a time
+    scrollRef.current.scrollTo({
+      left: Math.max(0, scrollRef.current.scrollLeft - scrollAmount),
+      behavior: 'smooth'
+    })
+  }, [size])
+
+  const scrollToRight = useCallback(() => {
+    if (!scrollRef.current) return
+    const cardWidth = size === 'small' ? 180 : size === 'large' ? 320 : 240
+    const scrollAmount = cardWidth * 3 // Scroll 3 cards at a time
+    scrollRef.current.scrollTo({
+      left: scrollRef.current.scrollLeft + scrollAmount,
+      behavior: 'smooth'
+    })
+  }, [size])
+
+  // Enhanced drag functionality
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!scrollRef.current) return
+    e.preventDefault()
     setIsDragging(true)
     setStartX(e.pageX - scrollRef.current.offsetLeft)
     setScrollLeft(scrollRef.current.scrollLeft)
+    scrollRef.current.style.cursor = 'grabbing'
   }, [])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDragging || !scrollRef.current) return
     e.preventDefault()
     const x = e.pageX - scrollRef.current.offsetLeft
-    const walk = (x - startX) * 2
+    const walk = (x - startX) * 1.5 // Smoother drag
     scrollRef.current.scrollLeft = scrollLeft - walk
-  }, [isDragging, startX, scrollLeft])
+    handleScroll() // Update arrows during drag
+  }, [isDragging, startX, scrollLeft, handleScroll])
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false)
+    if (scrollRef.current) {
+      scrollRef.current.style.cursor = 'grab'
+    }
   }, [])
 
   const handleMouseLeave = useCallback(() => {
+    setIsDragging(false)
+    if (scrollRef.current) {
+      scrollRef.current.style.cursor = 'grab'
+    }
+  }, [])
+
+  // Touch support for mobile
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!scrollRef.current) return
+    setIsDragging(true)
+    setStartX(e.touches[0].pageX - scrollRef.current.offsetLeft)
+    setScrollLeft(scrollRef.current.scrollLeft)
+  }, [])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDragging || !scrollRef.current) return
+    const x = e.touches[0].pageX - scrollRef.current.offsetLeft
+    const walk = (x - startX) * 1.2
+    scrollRef.current.scrollLeft = scrollLeft - walk
+    handleScroll()
+  }, [isDragging, startX, scrollLeft, handleScroll])
+
+  const handleTouchEnd = useCallback(() => {
     setIsDragging(false)
   }, [])
 
@@ -117,30 +193,64 @@ export default function MovieRowWithAPI({
         {title}
       </h2>
 
-      {/* Movies Scroll Container với Mouse Drag */}
-      <div
-        ref={scrollRef}
-        className="flex overflow-x-auto scrollbar-hide space-x-4 px-4 sm:px-6 lg:px-8 pb-4 cursor-grab active:cursor-grabbing select-none"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-      >
-        {movies.map((movie, index) => (
-          <div
-            key={`${movie.id}-${index}-${type}`}
-            className={`flex-shrink-0 ${
-              size === 'small' 
-                ? 'w-[160px] sm:w-[180px]' 
-                : size === 'large'
-                ? 'w-[280px] sm:w-[320px]'
-                : 'w-[200px] sm:w-[240px]'
-            }`}
+      {/* Container with Navigation Arrows */}
+      <div className="relative">
+        {/* Left Arrow */}
+        {isScrollable && showLeftArrow && (
+          <button
+            onClick={scrollToLeft}
+            className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/80 hover:bg-black/90 text-white rounded-full p-2 transition-all duration-300 opacity-0 group-hover/row:opacity-100 hover:scale-110 backdrop-blur-sm border border-white/20"
+            style={{ transform: 'translateY(-50%)' }}
           >
-            <MovieCard movie={movie} />
-          </div>
-        ))}
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+        )}
+
+        {/* Right Arrow */}
+        {isScrollable && showRightArrow && (
+          <button
+            onClick={scrollToRight}
+            className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/80 hover:bg-black/90 text-white rounded-full p-2 transition-all duration-300 opacity-0 group-hover/row:opacity-100 hover:scale-110 backdrop-blur-sm border border-white/20"
+            style={{ transform: 'translateY(-50%)' }}
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+        )}
+
+        {/* Movies Scroll Container với Enhanced Drag & Touch */}
+        <div
+          ref={scrollRef}
+          className="flex overflow-x-auto scrollbar-hide space-x-4 px-4 sm:px-6 lg:px-8 pb-4 cursor-grab active:cursor-grabbing select-none scroll-smooth"
+          style={{ 
+            scrollbarWidth: 'none', 
+            msOverflowStyle: 'none',
+            scrollBehavior: 'smooth',
+            WebkitOverflowScrolling: 'touch'
+          }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onScroll={handleScroll}
+        >
+          {movies.map((movie, index) => (
+            <div
+              key={`${movie.id}-${index}-${type}`}
+              className={`flex-shrink-0 transition-transform duration-300 hover:scale-105 ${
+                size === 'small' 
+                  ? 'w-[160px] sm:w-[180px]' 
+                  : size === 'large'
+                  ? 'w-[280px] sm:w-[320px]'
+                  : 'w-[200px] sm:w-[240px]'
+              }`}
+            >
+              <MovieCard movie={movie} />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

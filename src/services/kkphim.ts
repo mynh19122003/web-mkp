@@ -73,18 +73,83 @@ export class PhimAPIService {
     }
   }
 
-  // Lấy chi tiết phim
+  // Lấy chi tiết phim theo slug
   static async getMovieDetail(slug: string): Promise<Movie | null> {
     try {
+      console.log(`🔍 Fetching movie detail for slug: ${slug}`)
       const response = await fetch(`${API_BASE_URL}/phim/${slug}`)
+      
+      if (!response.ok) {
+        console.log(`❌ API response not ok: ${response.status} ${response.statusText}`)
+        return null
+      }
+      
       const data = await response.json()
+      console.log(`🔍 API response status: ${data.status}, has movie: ${!!data.movie}`)
       
       if (data.status && data.movie) {
-        return this.transformSingleMovieDetail(data.movie)
+        const transformedMovie = this.transformSingleMovieDetail(data.movie)
+        console.log(`✅ Successfully transformed movie: ${transformedMovie?.title}`)
+        return transformedMovie
       }
+      
+      console.log(`⚠️ No valid movie data in response for: ${slug}`)
       return null
     } catch (error) {
-      console.error('Lỗi khi lấy chi tiết phim:', error)
+      console.error(`❌ Error fetching movie detail for ${slug}:`, error)
+      return null
+    }
+  }
+
+  // Lấy chi tiết phim theo ID (tìm kiếm trong danh sách)
+  static async getMovieById(movieId: string): Promise<Movie | null> {
+    try {
+      console.log(`🔍 Searching for movie with ID: ${movieId}`)
+      
+      // Thử tìm theo slug trước (nếu movieId là slug)
+      const movieBySlug = await this.getMovieDetail(movieId)
+      if (movieBySlug) {
+        return movieBySlug
+      }
+      
+      // Nếu không phải slug, tìm trong danh sách phim mới
+      const endpoints = [
+        `${API_BASE_URL}/danh-sach/phim-moi-cap-nhat?page=1`,
+        `${API_BASE_URL}/danh-sach/phim-moi-cap-nhat?page=2`,
+        `${API_BASE_URL}/v1/api/danh-sach/phim-bo?page=1`,
+        `${API_BASE_URL}/v1/api/danh-sach/phim-le?page=1`
+      ]
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint)
+          const data = await response.json()
+          
+          let movies: any[] = []
+          if (data.items) movies = data.items
+          else if (data.data?.items) movies = data.data.items
+          
+          // Tìm phim theo ID hoặc _id
+          const foundMovie = movies.find(movie => 
+            movie._id === movieId || 
+            movie.id === movieId ||
+            movie.slug === movieId
+          )
+          
+          if (foundMovie) {
+            console.log(`✅ Found movie by ID: ${foundMovie.name}`)
+            const transformedMovies = this.transformMovieData([foundMovie])
+            return transformedMovies[0] || null
+          }
+        } catch (err) {
+          console.log(`Search endpoint ${endpoint} failed:`, err)
+        }
+      }
+      
+      console.log(`⚠️ Movie not found with ID: ${movieId}`)
+      return null
+    } catch (error) {
+      console.error(`❌ Error searching for movie ID ${movieId}:`, error)
       return null
     }
   }
@@ -611,7 +676,7 @@ export class PhimAPIService {
       const backdropUrl = item.poster_url || item.backdrop || item.thumb_url || item.image
       
       return {
-        id: item._id || item.id || item.slug,
+        id: item.slug || item._id || item.id, // Ưu tiên slug làm ID chính
         title: item.name || item.title,
         originalTitle: item.origin_name || item.original_name,
         slug: item.slug,

@@ -7,7 +7,8 @@ import MovieRowWithAPI from '@/components/MovieRowWithAPI'
 import VideoPlayer from '@/components/VideoPlayer'
 import Breadcrumb from '@/components/Breadcrumb'
 import ShareButton from '@/components/ShareButton'
-import { TrailerButton } from '@/components/TrailerButton'
+import TrailerVideoPlayer from '@/components/TrailerVideoPlayer'
+import SimpleWatchlistButton from '@/components/SimpleWatchlistButton'
 import MovieDetails from '@/components/MovieDetails'
 import MovieRating from '@/components/MovieRating'
 
@@ -18,7 +19,8 @@ interface MovieDetailPageProps {
 }
 
 export default async function MovieDetailPage({ params }: MovieDetailPageProps) {
-  const movie = await PhimAPIService.getMovieDetail(params.slug)
+  const { slug } = await params
+  const movie = await PhimAPIService.getMovieDetail(slug)
   
   if (!movie) {
     notFound()
@@ -108,19 +110,18 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
                   Xem Phim
                 </button>
                 
-                <button className="bg-gray-800/80 backdrop-blur-sm border border-gray-600 text-white font-semibold py-3 px-6 rounded hover:bg-gray-700 transition-all duration-200 flex items-center gap-3 hover:scale-105">
-                  <Plus className="w-6 h-6" />
-                  Danh Sách Của Tôi
-                </button>
+                <SimpleWatchlistButton 
+                  movieId={movie.id} 
+                  movieTitle={movie.title}
+                  size="medium"
+                />
                 
                 <button className="bg-gray-800/80 backdrop-blur-sm border border-gray-600 text-white font-semibold py-3 px-6 rounded hover:bg-gray-700 transition-all duration-200 flex items-center gap-3 hover:scale-105">
                   <ThumbsUp className="w-6 h-6" />
                   Thích
                 </button>
-
-                <TrailerButton trailerUrl={movie.trailer} title={movie.title} />
                 
-                <ShareButton title={movie.title} url={`/phim/${params.slug}`} />
+                <ShareButton title={movie.title} url={`/phim/${slug}`} />
               </div>
             </div>
           </div>
@@ -140,20 +141,22 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
           <div className="grid lg:grid-cols-3 gap-12">
             {/* Main Content */}
             <div className="lg:col-span-2">
-              {/* Video Player Section */}
-              <div className="mb-12">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold flex items-center gap-3">
-                    <PlayCircle className="w-8 h-8 text-red-500" />
-                    Xem Phim
-                  </h2>
+              {/* Trailer Section */}
+              {movie.trailer && (
+                <div className="mb-12">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold flex items-center gap-3">
+                      <PlayCircle className="w-8 h-8 text-red-500" />
+                      Trailer
+                    </h2>
+                  </div>
+                  <TrailerVideoPlayer
+                    trailerUrl={movie.trailer}
+                    title={movie.title}
+                    thumbnail={movie.backdrop || movie.poster}
+                  />
                 </div>
-                <VideoPlayer
-                  videoUrl={movie.videoUrl}
-                  title={movie.title}
-                  thumbnail={movie.backdrop || movie.poster}
-                />
-              </div>
+              )}
 
               {/* Episodes Section */}
               {movie.episodes && movie.episodes.length > 0 && (
@@ -289,7 +292,8 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
 
 // Generate metadata for SEO
 export async function generateMetadata({ params }: MovieDetailPageProps) {
-  const movie = await PhimAPIService.getMovieDetail(params.slug)
+  const { slug } = await params
+  const movie = await PhimAPIService.getMovieDetail(slug)
   
   if (!movie) {
     return {

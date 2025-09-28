@@ -7,6 +7,7 @@ export interface IUser extends mongoose.Document {
   password?: string
   image?: string
   provider?: string
+  watchlist: string[] // Array of movie IDs
   createdAt: Date
   updatedAt: Date
 }
@@ -44,6 +45,10 @@ const UserSchema = new mongoose.Schema({
     type: String,
     enum: ['credentials', 'google'],
     default: 'credentials'
+  },
+  watchlist: {
+    type: [String],
+    default: []
   }
 }, {
   timestamps: true

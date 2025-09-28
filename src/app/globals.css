@@ -62,6 +62,66 @@ body {
   display: none;
 }
 
+/* Enhanced smooth scrolling for movie rows */
+.scroll-smooth {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Smooth drag interaction */
+.smooth-drag {
+  transition: transform 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+}
+
+.smooth-drag:active {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+/* Movie card hover enhancement */
+.movie-card-hover {
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.movie-card-hover:hover {
+  transform: scale(1.05);
+  z-index: 10;
+}
+
+/* Prevent text selection during drag */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Smooth scrolling with momentum */
+.momentum-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+
+.momentum-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Card snap alignment */
+.snap-start {
+  scroll-snap-align: start;
+}
+
+/* Enhanced grab cursor */
+.grab-cursor {
+  cursor: grab;
+}
+
+.grab-cursor:active {
+  cursor: grabbing;
+}
+
 /* Additional Components */
 
 /* Netflix-style gradient text */

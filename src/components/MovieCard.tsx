@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Play, Clock, Star, Calendar, Plus, ChevronDown } from 'lucide-react'
+import { Play, Clock } from 'lucide-react'
 import { Movie } from '@/types/movie'
-import { formatMovieType, getTypeColor } from '@/lib/utils'
+import SimpleWatchlistButton from './SimpleWatchlistButton'
 
 interface MovieCardProps {
   movie: Movie
@@ -17,11 +17,14 @@ export default function MovieCard({ movie, size = 'medium' }: MovieCardProps) {
   }
 
   return (
-    <Link href={`/phim/${movie.slug || movie.id}`} className="group relative block rounded-lg overflow-hidden card-hover hover:z-10">
-      {/* Poster Image */}
+    <Link 
+      href={`/phim/${movie.slug || movie.id}`} 
+      className="group relative block rounded-lg overflow-hidden movie-card-hover hover:z-10"
+      draggable={false}
+    >
       <div className={`relative ${cardSizes[size]} overflow-hidden bg-gray-900`}>
         <Image
-          src={movie.poster || movie.thumbnail || 'https://phimapi.com/image.php?url=https%3A//phimimg.com/upload/vod/20220309-1/2022030915165476.jpg'}
+          src={movie.poster || movie.thumbnail || 'https://via.placeholder.com/300x450/1f2937/ffffff?text=No+Image'}
           alt={movie.title}
           fill
           className="movie-poster object-cover object-center transition-transform duration-700 group-hover:scale-110"
@@ -30,20 +33,12 @@ export default function MovieCard({ movie, size = 'medium' }: MovieCardProps) {
           unoptimized
         />
         
-        {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         
-        {/* Quality Badge */}
         <div className="absolute top-2 left-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded shadow-lg shimmer">
           {movie.quality}
         </div>
 
-        {/* Type Badge - Bỏ hiển thị type để giao diện sạch hơn */}
-        {/* <div className={`absolute top-12 left-2 ${getTypeColor(movie.apiType, movie.type)} text-white text-xs font-bold px-2 py-1 rounded shadow-lg`}>
-          {formatMovieType(movie.apiType, movie.type)}
-        </div> */}
-
-        {/* Rating Badge - Ưu tiên vote_average (TMDB), rồi IMDb, không hiển thị vote count */}
         {(movie.voteAverage || movie.imdbRating || movie.rating) > 0 ? (
           <div className="absolute top-2 right-2 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded">
             <div className="flex items-center space-x-1">
@@ -57,14 +52,12 @@ export default function MovieCard({ movie, size = 'medium' }: MovieCardProps) {
           </div>
         )}
 
-        {/* Play Overlay */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
           <div className="bg-white bg-opacity-20 backdrop-blur-netflix rounded-full p-4 transform scale-75 group-hover:scale-100 transition-transform duration-300 glow-border">
             <Play className="w-8 h-8 text-white fill-current" />
           </div>
         </div>
 
-        {/* Duration Badge - Chỉ hiển thị thời lượng nếu có */}
         {movie.duration > 0 && (
           <div className="absolute bottom-2 right-2 bg-gray-700 text-white text-xs font-bold px-2 py-1 rounded flex items-center space-x-1">
             <Clock className="w-3 h-3" />
@@ -72,7 +65,6 @@ export default function MovieCard({ movie, size = 'medium' }: MovieCardProps) {
           </div>
         )}
 
-        {/* Hover Info Panel */}
         <div className="absolute bottom-0 left-0 right-0 p-4 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-gradient-to-t from-black/90 to-transparent backdrop-blur-netflix">
           <h3 className="text-white font-bold text-sm mb-2 line-clamp-2 text-shadow-hero">
             {movie.title}
@@ -89,12 +81,12 @@ export default function MovieCard({ movie, size = 'medium' }: MovieCardProps) {
               >
                 <Play className="w-4 h-4 fill-current" />
               </button>
-              <button className="bg-gray-700 bg-opacity-80 text-white p-2 rounded-full hover:bg-gray-600 transition-all duration-200 glow-border">
-                <Plus className="w-4 h-4" />
-              </button>
-              <button className="bg-gray-700 bg-opacity-80 text-white p-2 rounded-full hover:bg-gray-600 transition-all duration-200 glow-border">
-                <ChevronDown className="w-4 h-4" />
-              </button>
+              <SimpleWatchlistButton 
+                movieId={movie.slug || movie.id} 
+                movieTitle={movie.title}
+                variant="icon"
+                size="small"
+              />
             </div>
             <span className="text-green-400 text-xs font-bold shimmer">
               {movie.isCompleted ? '100% phù hợp' : 'Đang cập nhật'}
@@ -102,7 +94,6 @@ export default function MovieCard({ movie, size = 'medium' }: MovieCardProps) {
           </div>
           <div className="flex items-center space-x-2 text-white text-opacity-80 text-xs">
             <span>{movie.year}</span>
-            {/* Bỏ hiển thị type và episode count để giao diện sạch hơn */}
             {movie.duration > 0 && (
               <>
                 <span>•</span>
@@ -125,7 +116,6 @@ export default function MovieCard({ movie, size = 'medium' }: MovieCardProps) {
           </div>
         </div>
       </div>
-
     </Link>
   )
 }

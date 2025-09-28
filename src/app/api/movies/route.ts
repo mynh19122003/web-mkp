@@ -2,6 +2,37 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PhimAPIService } from '@/services/kkphim';
 import { Movie } from '@/types/movie';
 
+// Simple in-memory cache với TTL
+const cache = new Map<string, { data: any, timestamp: number }>()
+const CACHE_TTL = 5 * 60 * 1000 // 5 phút
+
+function getCacheKey(type: string, page: number, rating?: string, voteCount?: string, categorySlug?: string): string {
+  return `${type}-${page}-${rating || 'none'}-${voteCount || 'none'}-${categorySlug || 'none'}`
+}
+
+function getFromCache(key: string): any | null {
+  const cached = cache.get(key)
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data
+  }
+  cache.delete(key) // Xóa cache cũ
+  return null
+}
+
+function setCache(key: string, data: any): void {
+  cache.set(key, { data, timestamp: Date.now() })
+  
+  // Cleanup cache cũ
+  if (cache.size > 100) {
+    const now = Date.now()
+    for (const [k, v] of cache.entries()) {
+      if (now - v.timestamp > CACHE_TTL) {
+        cache.delete(k)
+      }
+    }
+  }
+}
+
 // Helper function để filter phim theo rating và voteCount
 function filterMoviesByRatingAndVoteCount(movies: Movie[], rating: string, voteCount: string): Movie[] {
   let filteredMovies = movies;
@@ -112,6 +143,25 @@ export async function GET(request: NextRequest) {
     const rating = searchParams.get('rating') || '';
     const voteCount = searchParams.get('voteCount') || '';
 
+    // Kiểm tra cache trước
+    const cacheKey = getCacheKey(type, page, rating, voteCount, categorySlug)
+    const cachedData = getFromCache(cacheKey)
+    
+    if (cachedData) {
+      console.log(`⚡ Cache hit for ${cacheKey}`)
+      return NextResponse.json({
+        success: true,
+        data: cachedData,
+        page,
+        type,
+        total: cachedData.length,
+        cached: true
+      });
+    }
+
+    console.log(`🔄 Fetching fresh data for ${cacheKey}`)
+    const startTime = Date.now()
+    
     let movies: Movie[] = [];
 
     // Logic: Parameters có thể standalone hoặc kết hợp theo thứ tự
@@ -144,12 +194,19 @@ export async function GET(request: NextRequest) {
       movies = await getMoviesByType(type, page, keyword, categorySlug);
     }
 
+    // Lưu vào cache
+    setCache(cacheKey, movies)
+    
+    const endTime = Date.now()
+    console.log(`⚡ Fetched ${movies.length} movies in ${endTime - startTime}ms`)
+
     return NextResponse.json({
       success: true,
       data: movies,
       page,
       type,
-      total: movies.length
+      total: movies.length,
+      fetchTime: endTime - startTime
     });
 
   } catch (error) {

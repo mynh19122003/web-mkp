@@ -10,8 +10,6 @@ export default function Home() {
         {/* Phim Sôi Nổi Nhất - Top trending */}
         <MovieRowWithAPI title="🔥 SÔI NỔI NHẤT"  rating="good" />
         
-        {/* Phim Yêu Thích Nhất - Popular singles */}
-        <MovieRowWithAPI title="❤️ YÊU THÍCH NHẤT" voteCount='niche' />
         {/* Phim Mới Cập Nhật */}
         <MovieRowWithAPI title="🆕 PHIM MỚI CẬP NHẬT" type="new" />
         
