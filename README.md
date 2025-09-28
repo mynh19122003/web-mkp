@@ -1,183 +1,195 @@
-# RoPhim Clone - Movie Streaming Website
+# 🎬 RoPhim Clone - Netflix-Style Movie Streaming Website
 
-Một website clone của RoPhim.me được xây dựng bằng Next.js, TypeScript và Tailwind CSS.
+A modern, responsive movie streaming website built with Next.js 15, featuring Netflix-style UI/UX and complete user authentication system.
 
-## 🎬 Giới thiệu
+## ✨ Features
 
-RoPhim Clone là một nền tảng xem phim trực tuyến miễn phí, được thiết kế để mang lại trải nghiệm tương tự như website RoPhim.me gốc. Website hỗ trợ xem phim HD, phim 4K với giao diện hiện đại và responsive.
+### 🎨 **UI/UX Design**
+- **Netflix-style dark theme** with modern glass morphism effects
+- **Responsive design** optimized for mobile, tablet, and desktop
+- **Horizontal scrolling movie rows** with smooth animations
+- **Hero carousel** with auto-playing trailers
+- **Advanced hover effects** and transitions
+- **Custom scrollbars** and loading states
 
-## ✨ Tính năng chính
+### 🎥 **Movie Features**
+- **Movie browsing** by categories (New, Popular, Korean, Chinese, Western, Anime)
+- **Advanced filtering** by rating and popularity
+- **Movie details** with cast, director, genres, and descriptions
+- **Trailer integration** with video player
+- **Search functionality** across all movies
+- **Optimized images** with WebP conversion and lazy loading
 
-- **🎥 Giao diện hiện đại**: Thiết kế responsive, tối ưu cho mọi thiết bị
-- **🔍 Tìm kiếm thông minh**: Tìm kiếm phim theo tên, thể loại, quốc gia
-- **📱 Responsive Design**: Hoạt động mượt mà trên desktop, tablet và mobile
-- **🎭 Phân loại đa dạng**: Phim theo thể loại, quốc gia, năm phát hành
-- **⭐ Đánh giá phim**: Hệ thống rating và review
-- **🎪 Hero Carousel**: Slider hiển thị phim nổi bật
-- **🎬 Movie Grid**: Lưới hiển thị phim với thông tin chi tiết
-- **🌙 Dark Theme**: Giao diện tối mắt thân thiện
+### 👤 **User System**
+- **Complete authentication** with NextAuth.js
+- **Registration/Login** with email and password
+- **User profiles** with avatar and preferences
+- **Watchlist functionality** - save/remove movies
+- **MongoDB integration** for persistent data storage
 
-## 🚀 Công nghệ sử dụng
+### ⚡ **Performance**
+- **API caching** with 5-minute TTL for faster loading
+- **Image optimization** with Next.js Image component
+- **Turbopack** for ultra-fast development builds
+- **Database optimization** with proper indexing
 
-- **Frontend Framework**: Next.js 15 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS v4
-- **Icons**: Lucide React
-- **Image Optimization**: Next.js Image Component
-- **Font**: Inter (Google Fonts)
+## 🛠 Tech Stack
 
-## 🛠️ Cài đặt và chạy dự án
+- **Framework:** Next.js 15 with App Router
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS v4
+- **Authentication:** NextAuth.js
+- **Database:** MongoDB with Mongoose
+- **API:** PhimAPI.com integration
+- **Deployment:** Vercel ready
 
-### Yêu cầu hệ thống
+## 🚀 Quick Start
 
-- Node.js 18.x trở lên
-- npm hoặc yarn
+### Prerequisites
+- Node.js 18+ 
+- MongoDB (local or Atlas)
+- npm or yarn
 
-### Cài đặt
+### Installation
 
-1. Clone repository:
-
+1. **Clone the repository**
 ```bash
-git clone <repository-url>
+git clone https://github.com/yourusername/web-rophim.git
 cd web-rophim
 ```
 
-2. Cài đặt dependencies:
-
+2. **Install dependencies**
 ```bash
 npm install
 ```
 
-3. Chạy development server:
+3. **Set up environment variables**
+Create `.env.local` file:
+```env
+# Database
+MONGODB_URI=mongodb://localhost:27017/web-rophim
 
+# NextAuth
+NEXTAUTH_SECRET=your-secret-key-here
+NEXTAUTH_URL=http://localhost:3000
+
+# OAuth (optional)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
+
+4. **Start development server**
 ```bash
 npm run dev
 ```
 
-4. Mở browser và truy cập: `http://localhost:3000`
+5. **Open browser**
+Navigate to [http://localhost:3000](http://localhost:3000)
 
-### Scripts có sẵn
-
-```bash
-# Chạy development server
-npm run dev
-
-# Build cho production
-npm run build
-
-# Chạy production server
-npm run start
-
-# Chạy linter
-npm run lint
-```
-
-## 📁 Cấu trúc dự án
+## 📁 Project Structure
 
 ```
 src/
-├── app/                    # App Router (Next.js 13+)
-│   ├── globals.css        # Global styles
-│   ├── layout.tsx         # Root layout
-│   └── page.tsx           # Home page
+├── app/                    # Next.js App Router
+│   ├── api/               # API routes
+│   │   ├── auth/          # Authentication endpoints
+│   │   ├── movies/        # Movie data endpoints
+│   │   └── watchlist/     # Watchlist management
+│   ├── phim/              # Movie pages
+│   ├── login/             # Authentication pages
+│   └── watchlist/         # User watchlist page
 ├── components/            # React components
-│   ├── Header.tsx         # Navigation header
-│   ├── Footer.tsx         # Site footer
-│   ├── HeroSection.tsx    # Hero carousel
-│   ├── MovieCard.tsx      # Movie card component
-│   └── MovieGrid.tsx      # Movie grid layout
-├── data/                  # Mock data
-│   └── movies.ts          # Sample movie data
+│   ├── MovieCard.tsx      # Movie display card
+│   ├── HeroSection.tsx    # Homepage hero
+│   ├── Header.tsx         # Navigation
+│   └── WatchlistButton.tsx # Watchlist functionality
+├── hooks/                 # Custom React hooks
 ├── lib/                   # Utility functions
-│   └── utils.ts           # Helper utilities
-└── types/                 # TypeScript types
-    └── movie.ts           # Movie type definitions
+├── models/               # MongoDB models
+├── services/             # External API integration
+└── types/                # TypeScript type definitions
 ```
 
-## 🎨 Thiết kế
+## 🎯 Key Components
 
-Website được thiết kế dựa trên phân tích của RoPhim.me gốc với các đặc điểm:
+### Movie Display
+- **MovieCard**: Responsive movie cards with hover effects
+- **MovieRowWithAPI**: Horizontal scrolling rows with API integration
+- **HeroSection**: Featured movies carousel with autoplay
 
-### Header
+### User Features
+- **WatchlistButton**: Add/remove movies from personal watchlist
+- **Authentication**: Complete login/register system
+- **UserProfile**: Profile management and preferences
 
-- Logo RoPhim
-- Navigation menu với dropdown thể loại và quốc gia
-- Search bar
-- Mobile responsive menu
+### API Integration
+- **PhimAPI Service**: External movie data integration
+- **Caching System**: In-memory caching for performance
+- **Error Handling**: Comprehensive error handling and fallbacks
 
-### Hero Section
+## 🔧 Available Scripts
 
-- Carousel hiển thị phim nổi bật
-- Auto-play với navigation controls
-- Movie information overlay
-- Call-to-action buttons
+```bash
+# Development
+npm run dev          # Start development server with Turbopack
 
-### Movie Grid
+# Production
+npm run build        # Build for production
+npm start           # Start production server
 
-- Grid layout responsive (2-6 columns tùy screen size)
-- Movie cards với poster, rating, thông tin chi tiết
-- Hover effects và animations
-- Category sections
+# Code Quality
+npm run lint        # Run ESLint
+```
 
-### Footer
+## 🌟 Demo
 
-- Company information
-- Quick links
-- Social media links
-- Copyright information
+**Test Account:**
+- Email: `demo@test.com`
+- Password: `123456`
 
 ## 📱 Responsive Design
 
-- **Mobile**: 2 columns grid
-- **Tablet**: 3-4 columns grid
-- **Desktop**: 5-6 columns grid
-- **Large Desktop**: 6+ columns grid
+- **Mobile (320px+)**: Touch-optimized interface with stacked layouts
+- **Tablet (768px+)**: Medium-sized cards with touch interactions
+- **Desktop (1024px+)**: Full Netflix-like experience with hover effects
+- **Large screens (1440px+)**: Maximum visual impact with larger elements
 
-## 🎭 Thể loại phim hỗ trợ
+## 🔒 Security Features
 
-- Hành động
-- Tình cảm
-- Khoa học viễn tưởng
-- Cổ trang
-- Hoạt hình
-- Kinh dị
-- Võ thuật
-- Tâm lý
-- Hài hước
-- Phiêu lưu
+- **Password hashing** with bcryptjs
+- **CSRF protection** with NextAuth.js
+- **Input validation** on all forms
+- **Secure session management**
+- **Environment variable protection**
 
-## 🌍 Quốc gia
+## 🚀 Deployment
 
-- Việt Nam 🇻🇳
-- Hàn Quốc 🇰🇷
-- Trung Quốc 🇨🇳
-- Thái Lan 🇹🇭
-- Nhật Bản 🇯🇵
-- Âu Mỹ 🇺🇸
+The project is ready for deployment on Vercel:
 
-## 🚧 Tính năng sắp tới
+1. **Push to GitHub**
+2. **Connect to Vercel**
+3. **Add environment variables**
+4. **Deploy automatically**
 
-- [ ] Trang chi tiết phim
-- [ ] Video player tích hợp
-- [ ] Tìm kiếm nâng cao
-- [ ] Lọc phim theo multiple criteria
-- [ ] User authentication
-- [ ] Danh sách yêu thích
-- [ ] Comment và rating system
-- [ ] API integration cho data thực
+## 🤝 Contributing
 
-## 🤝 Đóng góp
-
-Mọi đóng góp đều được chào đón! Hãy tạo issue hoặc pull request.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## 📄 License
 
-Dự án này được phát triển cho mục đích học tập và nghiên cứu.
+This project is licensed under the MIT License.
 
-## 📞 Liên hệ
+## 🙏 Acknowledgments
 
-Nếu có bất kỳ câu hỏi nào, vui lòng tạo issue trên GitHub.
+- **PhimAPI.com** for movie data
+- **Next.js team** for the amazing framework
+- **Vercel** for hosting and deployment
+- **Netflix** for UI/UX inspiration
 
 ---
 
-**Lưu ý**: Đây là project demo được xây dựng để học tập, không phải website thương mại. Tất cả dữ liệu phim đều là mock data cho mục đích demo.
+**Built with ❤️ using modern web technologies**

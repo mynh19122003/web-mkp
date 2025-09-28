@@ -192,7 +192,6 @@ export async function GET(request: NextRequest) {
       movies = await getMoviesByType(type, page, keyword, categorySlug);
     }
 
-<<<<<<< HEAD
     // Lưu vào cache
     setCache(cacheKey, movies)
     
@@ -200,33 +199,13 @@ export async function GET(request: NextRequest) {
     console.log(`⚡ Fetched ${movies.length} movies in ${endTime - startTime}ms`)
 
     return NextResponse.json({
-=======
-    const processingTime = Date.now() - startTime
-
-    // Smart caching strategy
-    const response = NextResponse.json({
->>>>>>> 09bfed5929a1c620a8e67eec1ee785f39ab8f6af
       success: true,
       data: movies,
       page,
       type,
       total: movies.length,
-<<<<<<< HEAD
       fetchTime: endTime - startTime
-=======
-      performance: {
-        processingTime,
-        optimized: true
-      }
->>>>>>> 09bfed5929a1c620a8e67eec1ee785f39ab8f6af
     });
-
-    // Dynamic cache headers
-    const cacheTime = type === 'new' ? 120 : 300 // New: 2min, Others: 5min
-    response.headers.set('Cache-Control', `public, max-age=${cacheTime}, stale-while-revalidate=${cacheTime * 2}`)
-    response.headers.set('X-Processing-Time', `${processingTime}ms`)
-
-    return response
 
   } catch (error) {
     console.error('Movies API error:', error);
@@ -234,11 +213,7 @@ export async function GET(request: NextRequest) {
       { 
         success: false, 
         error: 'Không thể tải danh sách phim',
-        data: [],
-        performance: {
-          processingTime: Date.now() - startTime,
-          error: true
-        }
+        data: []
       },
       { status: 500 }
     );

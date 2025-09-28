@@ -14,11 +14,8 @@ export default function HeroSection() {
   const heroMovies = apiMovies.length > 0 ? apiMovies.slice(0, 4) : [] // Reduce to 4 for faster loading
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isMuted, setIsMuted] = useState(true)
-<<<<<<< HEAD
-=======
   const [showMovieInfo, setShowMovieInfo] = useState(false)
   const [imagesLoaded, setImagesLoaded] = useState<Set<number>>(new Set())
->>>>>>> 09bfed5929a1c620a8e67eec1ee785f39ab8f6af
 
   // OPTIMIZED: Faster carousel interval
   useEffect(() => {
@@ -293,141 +290,6 @@ export default function HeroSection() {
       >
         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
       </button>
-
-
-<<<<<<< HEAD
-=======
-            {/* Modal Content */}
-            <div className="p-6">
-              <div className="flex gap-6 mb-6">
-                {/* Movie Poster */}
-                <div className="flex-shrink-0">
-                  <Image
-                    src={getHeroImageUrl(currentMovie)}
-                    alt={currentMovie.title}
-                    width={200}
-                    height={300}
-                    className="rounded-lg object-cover"
-                  />
-                </div>
-                
-                {/* Movie Info */}
-                <div className="flex-1">
-                  <h3 className="text-3xl font-bold text-white mb-2">{currentMovie.title}</h3>
-                  {currentMovie.originalTitle && (
-                    <p className="text-xl text-gray-300 mb-4">{currentMovie.originalTitle}</p>
-                  )}
-                  
-                  {/* Stats */}
-                  <div className="flex flex-wrap gap-4 mb-4">
-                    {currentMovie.year && (
-                      <div className="flex items-center gap-2 text-gray-300">
-                        <Calendar className="w-4 h-4" />
-                        <span>{currentMovie.year}</span>
-                      </div>
-                    )}
-                    {currentMovie.duration && (
-                      <div className="flex items-center gap-2 text-gray-300">
-                        <Clock className="w-4 h-4" />
-                        <span>{currentMovie.duration} phút</span>
-                      </div>
-                    )}
-                    {currentMovie.totalEpisodes && (
-                      <div className="flex items-center gap-2 text-gray-300">
-                        <Users className="w-4 h-4" />
-                        <span>{currentMovie.totalEpisodes} tập</span>
-                      </div>
-                    )}
-                    {currentMovie.rating && (
-                      <div className="flex items-center gap-2 text-yellow-400">
-                        <Calendar className="w-4 h-4" />
-                        <span>{currentMovie.rating}/10</span>
-                      </div>
-                    )}
-                    {currentMovie.quality && (
-                      <div className="flex items-center gap-2 text-green-400">
-                        <span className="bg-green-600 px-2 py-1 rounded text-xs">{currentMovie.quality}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Genres */}
-                  {currentMovie.genres && currentMovie.genres.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="text-white font-semibold mb-2">Thể loại:</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {currentMovie.genres.map((genre, index) => (
-                          <span
-                            key={index}
-                            className="bg-red-600 text-white px-3 py-1 rounded-full text-sm"
-                          >
-                            {genre}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Country */}
-                  {currentMovie.country && (
-                    <div className="mb-4">
-                      <h4 className="text-white font-semibold mb-2">Quốc gia:</h4>
-                      <span className="bg-gray-700 text-white px-3 py-1 rounded-full text-sm">
-                        {currentMovie.country}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Description */}
-              {currentMovie.description && (
-                <div className="mb-6">
-                  <h4 className="text-white font-semibold mb-3">Nội dung:</h4>
-                  <p className="text-gray-300 leading-relaxed">
-                    {currentMovie.description}
-                  </p>
-                </div>
-              )}
-
-              {/* Cast */}
-              {currentMovie.cast && currentMovie.cast.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-white font-semibold mb-3">Diễn viên:</h4>
-                  <p className="text-gray-300">{currentMovie.cast.join(', ')}</p>
-                </div>
-              )}
-
-              {/* Director */}
-              {currentMovie.director && (
-                <div className="mb-6">
-                  <h4 className="text-white font-semibold mb-3">Đạo diễn:</h4>
-                  <p className="text-gray-300">{currentMovie.director}</p>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex gap-4 pt-4 border-t border-gray-700">
-                <Link
-                  href={`/phim/${currentMovie.slug || currentMovie.id}`}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold text-center transition-colors flex items-center justify-center gap-2"
-                  onClick={() => setShowMovieInfo(false)}
-                >
-                  <Play className="w-5 h-5" />
-                  Xem phim
-                </Link>
-                <button
-                  onClick={() => setShowMovieInfo(false)}
-                  className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold transition-colors"
-                >
-                  Đóng
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
->>>>>>> 09bfed5929a1c620a8e67eec1ee785f39ab8f6af
 
     </section>
   )

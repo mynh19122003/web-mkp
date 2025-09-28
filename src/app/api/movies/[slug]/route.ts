@@ -3,10 +3,11 @@ import { PhimAPIService } from '@/services/kkphim';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const movie = await PhimAPIService.getMovieDetail(params.slug);
+    const { slug } = await params;
+    const movie = await PhimAPIService.getMovieDetail(slug);
 
     if (!movie) {
       return NextResponse.json(
