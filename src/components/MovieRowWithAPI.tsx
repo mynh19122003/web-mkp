@@ -10,21 +10,12 @@ interface MovieRowWithAPIProps {
   type?: 'new' | 'movie' | 'single' | 'series' | 'tv' | 'cinema' | 'anime' | 'korean' | 'chinese' | 'western' | 'category'
   size?: 'small' | 'medium' | 'large'
   page?: number
-  categorySlug?: string // Thêm categorySlug để lọc theo category từ API
+  categorySlug?: string
   
-  // 🏆 PHÂN LOẠI THEO RATING (Điểm đánh giá):
-  // - "excellent" (>= 8.5) - Phim xuất sắc, masterpiece
-  // - "high" (>= 8.0) - Phim chất lượng cao, đáng xem
-  // - "good" (>= 7.0) - Phim tốt, giải trí
-  // - "moderate" (6.0-7.9) - Phim ổn, xem được
+  // 🏆 Rating: excellent(8.5+) | high(8.0+) | good(7.0+) | moderate(6.0+)
   rating?: string
   
-  // 👥 PHÂN LOẠI THEO VOTE COUNT (Độ phổ biến):
-  // - "viral" (>= 5000) - Phim viral, siêu hot
-  // - "popular" (>= 1000) - Phim phổ biến, nhiều người xem
-  // - "trending" (>= 500) - Phim đang trending, hot
-  // - "niche" (100-500) - Phim thích hợp, có fan riêng
-  // - "fresh" (< 100) - Phim mới, ít người biết
+  // 👥 VoteCount: viral(5000+) | popular(1000+) | trending(500+) | niche(100+) | fresh(<100)
   voteCount?: string
 }
 
@@ -183,7 +174,7 @@ export default function MovieRowWithAPI({
   }
 
   if (movies.length === 0) {
-    return null
+    return null // Back to original behavior - hide empty sections
   }
 
   return (

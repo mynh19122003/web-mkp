@@ -2,7 +2,12 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Play, Clock } from 'lucide-react'
 import { Movie } from '@/types/movie'
+<<<<<<< HEAD
 import SimpleWatchlistButton from './SimpleWatchlistButton'
+=======
+import { formatMovieType, getTypeColor } from '@/lib/utils'
+import { PhimAPIService } from '@/services/kkphim'
+>>>>>>> 09bfed5929a1c620a8e67eec1ee785f39ab8f6af
 
 interface MovieCardProps {
   movie: Movie
@@ -16,6 +21,17 @@ export default function MovieCard({ movie, size = 'medium' }: MovieCardProps) {
     large: 'w-full aspect-[16/9]'
   }
 
+  // OPTIMIZED: WebP image với quality dựa theo size
+  const getOptimizedImageUrl = () => {
+    const originalUrl = movie.poster || movie.thumbnail
+    if (originalUrl) {
+      const quality = size === 'large' ? 95 : size === 'medium' ? 90 : 85
+      return PhimAPIService.convertToWebP(originalUrl, quality)
+    }
+    // Fallback to WebP converted default
+    return 'https://phimapi.com/image.php?url=https%3A//phimimg.com/upload/vod/20220309-1/2022030915165476.jpg&quality=90&format=webp'
+  }
+
   return (
     <Link 
       href={`/phim/${movie.slug || movie.id}`} 
@@ -24,13 +40,18 @@ export default function MovieCard({ movie, size = 'medium' }: MovieCardProps) {
     >
       <div className={`relative ${cardSizes[size]} overflow-hidden bg-gray-900`}>
         <Image
+<<<<<<< HEAD
           src={movie.poster || movie.thumbnail || 'https://via.placeholder.com/300x450/1f2937/ffffff?text=No+Image'}
+=======
+          src={getOptimizedImageUrl()}
+>>>>>>> 09bfed5929a1c620a8e67eec1ee785f39ab8f6af
           alt={movie.title}
           fill
           className="movie-poster object-cover object-center transition-transform duration-700 group-hover:scale-110"
           sizes={size === 'large' ? '(max-width: 768px) 80vw, (max-width: 1200px) 40vw, 320px' : '(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 240px'}
-          quality={90}
-          unoptimized
+          quality={95}
+          placeholder="blur"
+          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
         />
         
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -58,7 +79,19 @@ export default function MovieCard({ movie, size = 'medium' }: MovieCardProps) {
           </div>
         </div>
 
+<<<<<<< HEAD
         {movie.duration > 0 && (
+=======
+        {/* Duration/Episodes Badge - Hiển thị episodes cho phim bộ, duration cho phim lẻ */}
+        {(movie.type === 'series' || movie.apiType === 'series' || (movie.totalEpisodes && movie.totalEpisodes > 1)) ? (
+          // Hiển thị số tập cho phim bộ
+          <div className="absolute bottom-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded flex items-center space-x-1">
+            <span>📺</span>
+            <span>{movie.totalEpisodes || movie.currentEpisode || '?'} tập</span>
+          </div>
+        ) : movie.duration > 0 && (
+          // Hiển thị thời lượng cho phim lẻ
+>>>>>>> 09bfed5929a1c620a8e67eec1ee785f39ab8f6af
           <div className="absolute bottom-2 right-2 bg-gray-700 text-white text-xs font-bold px-2 py-1 rounded flex items-center space-x-1">
             <Clock className="w-3 h-3" />
             <span>{Math.floor(movie.duration / 60)}h {movie.duration % 60}m</span>
@@ -94,7 +127,17 @@ export default function MovieCard({ movie, size = 'medium' }: MovieCardProps) {
           </div>
           <div className="flex items-center space-x-2 text-white text-opacity-80 text-xs">
             <span>{movie.year}</span>
+<<<<<<< HEAD
             {movie.duration > 0 && (
+=======
+            {/* Hiển thị episodes cho phim bộ, duration cho phim lẻ */}
+            {(movie.type === 'series' || movie.apiType === 'series' || (movie.totalEpisodes && movie.totalEpisodes > 1)) ? (
+              <>
+                <span>•</span>
+                <span>{movie.totalEpisodes || movie.currentEpisode || '?'} tập</span>
+              </>
+            ) : movie.duration > 0 && (
+>>>>>>> 09bfed5929a1c620a8e67eec1ee785f39ab8f6af
               <>
                 <span>•</span>
                 <span>{Math.floor(movie.duration / 60)}h {movie.duration % 60}m</span>

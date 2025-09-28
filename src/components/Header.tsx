@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useSession, signOut } from 'next-auth/react'
 import { Search, Menu, X, Bell, User, ChevronDown } from 'lucide-react'
 
 // Static data for menu categories
@@ -28,7 +27,6 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isScrolled, setIsScrolled] = useState(false)
-  const { data: session, status } = useSession()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -131,61 +129,28 @@ export default function Header() {
               <Bell className="h-6 w-6" />
             </button>
 
-            {/* Auth Section */}
-            {session ? (
-              /* Profile Dropdown */
-              <div className="relative group">
-                <button className="flex items-center space-x-2 text-white hover:text-gray-300 transition-colors">
-                  <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-red-600">
-                    {session.user?.image ? (
-                      <img src={session.user.image} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-r from-red-600 to-red-500 flex items-center justify-center">
-                        <User className="h-5 w-5" />
-                      </div>
-                    )}
-                  </div>
-                  <span className="hidden sm:block text-sm">{session.user?.name}</span>
-                  <ChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180" />
-                </button>
-                <div className="absolute right-0 mt-3 w-48 bg-black bg-opacity-95 backdrop-blur-md rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 border border-gray-800">
-                  <div className="p-2">
-                    <Link href="/profile" className="block px-3 py-2 text-sm text-gray-300 hover:bg-red-600 hover:bg-opacity-20 hover:text-white rounded-md transition-colors">
-                      Trang cá nhân
-                    </Link>
-                    <Link href="/watchlist" className="block px-3 py-2 text-sm text-gray-300 hover:bg-red-600 hover:bg-opacity-20 hover:text-white rounded-md transition-colors">
-                      Danh sách xem
-                    </Link>
-                    <Link href="/settings" className="block px-3 py-2 text-sm text-gray-300 hover:bg-red-600 hover:bg-opacity-20 hover:text-white rounded-md transition-colors">
-                      Cài đặt
-                    </Link>
-                    <hr className="border-gray-700 my-2" />
-                    <button 
-                      onClick={() => signOut()}
-                      className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-red-600 hover:bg-opacity-20 hover:text-white rounded-md transition-colors"
-                    >
-                      Đăng xuất
-                    </button>
+            {/* User Profile Icon (Static) */}
+            <div className="relative group">
+              <button className="flex items-center space-x-2 text-white hover:text-gray-300 transition-colors">
+                <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-red-600">
+                  <div className="w-full h-full bg-gradient-to-r from-red-600 to-red-500 flex items-center justify-center">
+                    <User className="h-5 w-5" />
                   </div>
                 </div>
+                <span className="hidden sm:block text-sm">Guest</span>
+                <ChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180" />
+              </button>
+              <div className="absolute right-0 mt-3 w-48 bg-black bg-opacity-95 backdrop-blur-md rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 border border-gray-800">
+                <div className="p-2">
+                  <Link href="/watchlist" className="block px-3 py-2 text-sm text-gray-300 hover:bg-red-600 hover:bg-opacity-20 hover:text-white rounded-md transition-colors">
+                    Danh sách xem
+                  </Link>
+                  <Link href="/settings" className="block px-3 py-2 text-sm text-gray-300 hover:bg-red-600 hover:bg-opacity-20 hover:text-white rounded-md transition-colors">
+                    Cài đặt
+                  </Link>
+                </div>
               </div>
-            ) : (
-              /* Login/Register Buttons */
-              <div className="flex items-center space-x-2">
-                <Link 
-                  href="/login" 
-                  className="text-white hover:text-red-400 transition-all duration-300 px-4 py-2 border border-gray-600 rounded-full hover:border-red-500 hover:bg-red-500 hover:bg-opacity-10 font-medium backdrop-blur-sm text-sm whitespace-nowrap"
-                >
-                  Đăng nhập
-                </Link>
-                <Link 
-                  href="/register" 
-                  className="bg-gradient-to-r from-red-600 to-red-500 text-white px-4 py-2 rounded-full hover:from-red-500 hover:to-red-400 transition-all duration-300 font-medium shadow-lg hover:shadow-red-500/25 text-sm whitespace-nowrap"
-                >
-                  Đăng ký
-                </Link>
-              </div>
-            )}
+            </div>
           </div>
 
           {/* Mobile menu button */}

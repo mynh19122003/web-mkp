@@ -6,14 +6,21 @@ import Link from 'next/link'
 import { Play, Info, Volume2, VolumeX, Plus, ThumbsUp } from 'lucide-react'
 import { Movie } from '@/types/movie'
 import { useHeroMovies } from '@/hooks/useMovies'
+import { PhimAPIService } from '@/services/kkphim'
 
 export default function HeroSection() {
-  // Lấy phim chiếu rạp từ PhimAPI
+  // OPTIMIZED: Hero movies với single API call
   const { movies: apiMovies, loading } = useHeroMovies('cinema')
-  const heroMovies = apiMovies.length > 0 ? apiMovies.slice(0, 5) : []
+  const heroMovies = apiMovies.length > 0 ? apiMovies.slice(0, 4) : [] // Reduce to 4 for faster loading
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isMuted, setIsMuted] = useState(true)
+<<<<<<< HEAD
+=======
+  const [showMovieInfo, setShowMovieInfo] = useState(false)
+  const [imagesLoaded, setImagesLoaded] = useState<Set<number>>(new Set())
+>>>>>>> 09bfed5929a1c620a8e67eec1ee785f39ab8f6af
 
+  // OPTIMIZED: Faster carousel interval
   useEffect(() => {
     if (heroMovies.length <= 1) return
     
@@ -21,17 +28,52 @@ export default function HeroSection() {
       setCurrentIndex((prevIndex) => 
         prevIndex === heroMovies.length - 1 ? 0 : prevIndex + 1
       )
-    }, 8000) // Tăng thời gian để user có thể đọc content
+    }, 6000) // Reduced from 8s to 6s
 
     return () => clearInterval(timer)
   }, [heroMovies.length])
+
+  // OPTIMIZED: WebP image preloading
+  useEffect(() => {
+    heroMovies.forEach((movie, index) => {
+      if (movie.thumbnail || movie.poster) {
+        const img = document.createElement('img')
+        img.onload = () => {
+          setImagesLoaded(prev => new Set(prev).add(index))
+        }
+        // Preload WebP optimized images
+        const originalUrl = movie.thumbnail || movie.poster
+        img.src = PhimAPIService.convertToWebP(originalUrl, 95) // High quality for hero
+      }
+    })
+  }, [heroMovies])
+
+  // Get optimized hero image URL
+  const getHeroImageUrl = (movie: Movie) => {
+    const originalUrl = movie.thumbnail || movie.poster
+    if (originalUrl) {
+      return PhimAPIService.convertToWebP(originalUrl, 95) // High quality for hero
+    }
+    return 'https://phimapi.com/image.php?url=https%3A//phimimg.com/upload/vod/20220309-1/2022030915165476.jpg&quality=95&format=webp'
+  }
 
 
 
   if (loading) {
     return (
-      <section className="relative h-screen overflow-hidden bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-xl">Đang tải...</div>
+      <section className="relative h-screen overflow-hidden bg-gray-900">
+        {/* Optimized loading skeleton */}
+        <div className="absolute inset-0 animate-pulse">
+          <div className="w-full h-full bg-gradient-to-r from-gray-800 to-gray-700" />
+          <div className="absolute bottom-32 left-12 space-y-4">
+            <div className="w-80 h-16 bg-gray-600 rounded-lg" />
+            <div className="w-60 h-4 bg-gray-700 rounded" />
+            <div className="flex space-x-4 mt-8">
+              <div className="w-32 h-12 bg-gray-600 rounded-lg" />
+              <div className="w-32 h-12 bg-gray-700 rounded-lg" />
+            </div>
+          </div>
+        </div>
       </section>
     )
   }
@@ -45,13 +87,14 @@ export default function HeroSection() {
       {/* Full Screen Background Image */}
       <div className="absolute inset-0">
         <Image
-          src={currentMovie.thumbnail || currentMovie.poster || 'https://phimimg.com/upload/vod/20220309-1/2022030915165476.jpg'}
+          src={getHeroImageUrl(currentMovie)}
           alt={currentMovie.title}
           fill
           className="object-cover object-center"
           priority
-          quality={90}
-          unoptimized
+          quality={95}
+          placeholder="blur"
+          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
           sizes="100vw"
         />
         {/* Gradient Overlays for text readability */}
@@ -215,7 +258,7 @@ export default function HeroSection() {
               onClick={() => setCurrentIndex(index)}
             >
               <Image
-                src={movie.poster || movie.thumbnail || 'https://phimimg.com/upload/vod/20220309-1/2022030915165476.jpg'}
+                src={getHeroImageUrl(movie)}
                 alt={movie.title}
                 fill
                 className="object-cover rounded"
@@ -252,6 +295,139 @@ export default function HeroSection() {
       </button>
 
 
+<<<<<<< HEAD
+=======
+            {/* Modal Content */}
+            <div className="p-6">
+              <div className="flex gap-6 mb-6">
+                {/* Movie Poster */}
+                <div className="flex-shrink-0">
+                  <Image
+                    src={getHeroImageUrl(currentMovie)}
+                    alt={currentMovie.title}
+                    width={200}
+                    height={300}
+                    className="rounded-lg object-cover"
+                  />
+                </div>
+                
+                {/* Movie Info */}
+                <div className="flex-1">
+                  <h3 className="text-3xl font-bold text-white mb-2">{currentMovie.title}</h3>
+                  {currentMovie.originalTitle && (
+                    <p className="text-xl text-gray-300 mb-4">{currentMovie.originalTitle}</p>
+                  )}
+                  
+                  {/* Stats */}
+                  <div className="flex flex-wrap gap-4 mb-4">
+                    {currentMovie.year && (
+                      <div className="flex items-center gap-2 text-gray-300">
+                        <Calendar className="w-4 h-4" />
+                        <span>{currentMovie.year}</span>
+                      </div>
+                    )}
+                    {currentMovie.duration && (
+                      <div className="flex items-center gap-2 text-gray-300">
+                        <Clock className="w-4 h-4" />
+                        <span>{currentMovie.duration} phút</span>
+                      </div>
+                    )}
+                    {currentMovie.totalEpisodes && (
+                      <div className="flex items-center gap-2 text-gray-300">
+                        <Users className="w-4 h-4" />
+                        <span>{currentMovie.totalEpisodes} tập</span>
+                      </div>
+                    )}
+                    {currentMovie.rating && (
+                      <div className="flex items-center gap-2 text-yellow-400">
+                        <Calendar className="w-4 h-4" />
+                        <span>{currentMovie.rating}/10</span>
+                      </div>
+                    )}
+                    {currentMovie.quality && (
+                      <div className="flex items-center gap-2 text-green-400">
+                        <span className="bg-green-600 px-2 py-1 rounded text-xs">{currentMovie.quality}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Genres */}
+                  {currentMovie.genres && currentMovie.genres.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-white font-semibold mb-2">Thể loại:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {currentMovie.genres.map((genre, index) => (
+                          <span
+                            key={index}
+                            className="bg-red-600 text-white px-3 py-1 rounded-full text-sm"
+                          >
+                            {genre}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Country */}
+                  {currentMovie.country && (
+                    <div className="mb-4">
+                      <h4 className="text-white font-semibold mb-2">Quốc gia:</h4>
+                      <span className="bg-gray-700 text-white px-3 py-1 rounded-full text-sm">
+                        {currentMovie.country}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Description */}
+              {currentMovie.description && (
+                <div className="mb-6">
+                  <h4 className="text-white font-semibold mb-3">Nội dung:</h4>
+                  <p className="text-gray-300 leading-relaxed">
+                    {currentMovie.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Cast */}
+              {currentMovie.cast && currentMovie.cast.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-white font-semibold mb-3">Diễn viên:</h4>
+                  <p className="text-gray-300">{currentMovie.cast.join(', ')}</p>
+                </div>
+              )}
+
+              {/* Director */}
+              {currentMovie.director && (
+                <div className="mb-6">
+                  <h4 className="text-white font-semibold mb-3">Đạo diễn:</h4>
+                  <p className="text-gray-300">{currentMovie.director}</p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-4 pt-4 border-t border-gray-700">
+                <Link
+                  href={`/phim/${currentMovie.slug || currentMovie.id}`}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold text-center transition-colors flex items-center justify-center gap-2"
+                  onClick={() => setShowMovieInfo(false)}
+                >
+                  <Play className="w-5 h-5" />
+                  Xem phim
+                </Link>
+                <button
+                  onClick={() => setShowMovieInfo(false)}
+                  className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold transition-colors"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+>>>>>>> 09bfed5929a1c620a8e67eec1ee785f39ab8f6af
 
     </section>
   )

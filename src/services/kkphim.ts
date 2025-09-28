@@ -3,42 +3,116 @@ import { Movie } from '@/types/movie'
 
 const API_BASE_URL = 'https://phimapi.com'
 
+// Advanced cache system với multiple strategies
+const cache = new Map<string, { data: any, timestamp: number }>()
+const requestCache = new Map<string, Promise<any>>() // Prevent duplicate concurrent requests
+const CACHE_DURATION = 10 * 60 * 1000 // 10 minutes - longer cache
+const FAST_CACHE_DURATION = 2 * 60 * 1000 // 2 minutes for frequent requests
+
 export class PhimAPIService {
-  // Lấy danh sách phim mới nhất
+  // SMART PRELOAD: Critical endpoints only
+  static async preloadCache(): Promise<void> {
+    const criticalEndpoints = [
+      `${API_BASE_URL}/danh-sach/phim-moi-cap-nhat?page=1`, // New movies (most requested)
+      `${API_BASE_URL}/v1/api/the-loai/hoat-hinh?page=1`     // Anime (popular section)
+    ]
+
+    // Staggered preloading để không overwhelm API
+    criticalEndpoints.forEach((url, index) => {
+      setTimeout(() => {
+        this.cachedFetch(url, true).catch(() => {
+          // Silent fail - preload không nên block main functionality
+        })
+      }, index * 300) // 300ms stagger
+    })
+  }
+
+  // Optimized fetch với request deduplication và adaptive caching
+  private static async cachedFetch(url: string, fastCache = false): Promise<any> {
+    const cacheKey = url
+    const cacheDuration = fastCache ? FAST_CACHE_DURATION : CACHE_DURATION
+    
+    // Check cache first
+    const cached = cache.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < cacheDuration) {
+      return cached.data
+    }
+    
+    // Check if request is already in flight
+    if (requestCache.has(cacheKey)) {
+      return await requestCache.get(cacheKey)!
+    }
+    
+    // Create new request
+    const requestPromise = this.performFetch(url)
+    requestCache.set(cacheKey, requestPromise)
+    
+    try {
+      const data = await requestPromise
+      // Cache successful results
+      cache.set(cacheKey, { data, timestamp: Date.now() })
+      return data
+    } finally {
+      // Remove from request cache
+      requestCache.delete(cacheKey)
+    }
+  }
+  
+  private static async performFetch(url: string): Promise<any> {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout
+      
+      const response = await fetch(url, { 
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
+      })
+      
+      clearTimeout(timeoutId)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error(`Fetch failed for: ${url}`, error)
+      return { status: false, data: null, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
+
+  // Lấy danh sách phim mới nhất - OPTIMIZED
   static async getNewMovies(page: number = 1): Promise<Movie[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/danh-sach/phim-moi-cap-nhat?page=${page}`)
-      const data = await response.json()
-      
+      const data = await this.cachedFetch(`${API_BASE_URL}/danh-sach/phim-moi-cap-nhat?page=${page}`, true)
       return this.transformMovieData(data.items || [])
     } catch (error) {
-      console.error('Lỗi khi lấy danh sách phim mới:', error)
+      console.error('New movies error:', error)
       return []
     }
   }
 
-  // Lấy danh sách phim bộ  
+  // Lấy danh sách phim bộ - OPTIMIZED
   static async getTVSeries(page: number = 1): Promise<Movie[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/v1/api/danh-sach/phim-bo?page=${page}`)
-      const data = await response.json()
-      
+      const data = await this.cachedFetch(`${API_BASE_URL}/v1/api/danh-sach/phim-bo?page=${page}`, true)
       return this.transformMovieData(data.data?.items || [])
     } catch (error) {
-      console.error('Lỗi khi lấy danh sách phim bộ:', error)
+      console.error('TV Series error:', error)
       return []
     }
   }
 
-  // Lấy danh sách phim lẻ
+  // Lấy danh sách phim lẻ - OPTIMIZED  
   static async getMovies(page: number = 1): Promise<Movie[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/v1/api/danh-sach/phim-le?page=${page}`)
-      const data = await response.json()
-      
+      const data = await this.cachedFetch(`${API_BASE_URL}/v1/api/danh-sach/phim-le?page=${page}`, true)
       return this.transformMovieData(data.data?.items || [])
     } catch (error) {
-      console.error('Lỗi khi lấy danh sách phim lẻ:', error)
+      console.error('Movies error:', error)
       return []
     }
   }
@@ -50,8 +124,44 @@ export class PhimAPIService {
       const data = await response.json()
       
       const movies = this.transformMovieData(data.data?.items || [])
-      // Filter chỉ lấy phim có type là 'single'
-      return movies.filter(movie => movie.apiType === 'single' || movie.type === 'single')
+      
+      // Filter cực kỳ chặt chẽ - chỉ lấy phim lẻ thực sự
+      const filteredMovies = movies.filter(movie => {
+        // 1. Kiểm tra type phải là single
+        const isSingleType = movie.type === 'single' || movie.apiType === 'single'
+        
+        // 2. Kiểm tra số tập phải là 1
+        const totalEpisodes = movie.totalEpisodes || 0
+        const isSingleEpisode = totalEpisodes <= 1
+        
+        // 3. Kiểm tra currentEpisode phải <= 1
+        const currentEpisode = movie.currentEpisode || 1
+        const hasOnlyOneEpisode = currentEpisode <= 1
+        
+        // 4. Kiểm tra title và description không có dấu hiệu phim bộ
+        const title = movie.title.toLowerCase()
+        const description = movie.description.toLowerCase()
+        const hasNoSeriesIndicators = !title.includes('tập') && 
+                                     !title.includes('phần') &&
+                                     !title.includes('season') &&
+                                     !description.includes('tập') &&
+                                     !description.includes('phần') &&
+                                     !description.includes('season') &&
+                                     !description.includes('episodes') &&
+                                     !description.includes('phim bộ')
+        
+        // 5. Kiểm tra duration - phim lẻ thường > 60 phút
+        const hasMovieDuration = movie.duration >= 60
+        
+        // Log để debug
+        if (!isSingleType || !isSingleEpisode || !hasOnlyOneEpisode || !hasNoSeriesIndicators) {
+          console.log(`Filtered out: ${movie.title} - Type: ${movie.type}, Episodes: ${totalEpisodes}, Current: ${currentEpisode}`)
+        }
+        
+        return isSingleType && isSingleEpisode && hasOnlyOneEpisode && hasNoSeriesIndicators && hasMovieDuration
+      })
+      
+      return filteredMovies
     } catch (error) {
       console.error('Lỗi khi lấy danh sách phim lẻ:', error)
       return []
@@ -178,75 +288,78 @@ export class PhimAPIService {
     }
   }
 
-  // Lấy phim với content đầy đủ cho hero section
-  static async getMoviesWithFullContent(type: 'new' | 'movie' | 'tv' | 'cinema' | 'anime' | 'korean' | 'chinese' | 'western' = 'new', page: number = 1): Promise<Movie[]> {
+  // OPTIMIZED: Hero movies với single API call (không fetch detail)
+  static async getOptimizedHeroMovies(type: 'new' | 'movie' | 'tv' | 'cinema' | 'anime' | 'korean' | 'chinese' | 'western' = 'cinema'): Promise<Movie[]> {
     try {
-      const movies = await this.getMoviesByType(type, page)
+      // Single optimized call với aggressive caching
+      let movies: Movie[] = []
       
-      // Lấy chi tiết cho từng phim để có content đầy đủ
-      const moviesWithContent = await Promise.all(
-        movies.slice(0, 5).map(async (movie: Movie) => {
-          if (movie.slug) {
-            const detailMovie = await this.getMovieDetail(movie.slug)
-            return detailMovie || movie
-          }
-          return movie
+      switch (type) {
+        case 'cinema':
+          // Lấy trending movies thay vì cinema (có rating tốt hơn)
+          movies = await this.getTrendingMovies(1)
+          break
+        case 'anime':
+          movies = await this.getHotAnime(1)
+          break
+        default:
+          movies = await this.getMoviesByType(type, 1)
+      }
+      
+      // Chọn 5 phim tốt nhất cho hero với existing data
+      return movies
+        .filter(movie => {
+          const rating = movie.voteAverage || movie.imdbRating || movie.rating || 0
+          return rating >= 7.0 && movie.description && movie.description.length > 50
         })
-      )
-      
-      return moviesWithContent
+        .sort((a, b) => {
+          const scoreA = (a.voteAverage || a.imdbRating || a.rating || 0) + (a.voteCount ? Math.log10(a.voteCount) : 0)
+          const scoreB = (b.voteAverage || b.imdbRating || b.rating || 0) + (b.voteCount ? Math.log10(b.voteCount) : 0)
+          return scoreB - scoreA
+        })
+        .slice(0, 5)
+        
     } catch (error) {
-      console.error('Lỗi khi lấy phim với content đầy đủ:', error)
+      console.error('Hero movies optimization error:', error)
       return []
     }
   }
 
-  // 1. Top 10 phim được xem nhiều nhất trong 1 tháng (trending)
+  // DEPRECATED: Legacy method for backward compatibility
+  static async getMoviesWithFullContent(type: 'new' | 'movie' | 'tv' | 'cinema' | 'anime' | 'korean' | 'chinese' | 'western' = 'new', page: number = 1): Promise<Movie[]> {
+    // Redirect to optimized method
+    return this.getOptimizedHeroMovies(type)
+  }
+
+  // 1. Trending movies - PERFORMANCE OPTIMIZED với TMDB data
   static async getTrendingMovies(page: number = 1): Promise<Movie[]> {
     try {
-      // Thử nhiều endpoints để lấy phim hot
-      const endpoints = [
-        `${API_BASE_URL}/danh-sach/phim-moi-cap-nhat?page=1`,
-        `${API_BASE_URL}/v1/api/danh-sach/phim-bo?page=1`, 
-        `${API_BASE_URL}/v1/api/danh-sach/phim-le?page=1`
-      ]
-
-      let allMovies: Movie[] = []
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint)
-          const data = await response.json()
-          
-          let movies: any[] = []
-          if (data.items) movies = data.items
-          else if (data.data?.items) movies = data.data.items
-          
-          if (movies.length > 0) {
-            const transformedMovies = this.transformMovieData(movies)
-            allMovies.push(...transformedMovies)
-          }
-        } catch (err) {
-          console.log(`Endpoint ${endpoint} failed:`, err)
-        }
-      }
-
-      // Nếu có dữ liệu, sắp xếp theo độ hot
-      if (allMovies.length > 0) {
-        return allMovies
-          .filter(movie => (movie.imdbRating || movie.rating || 0) > 6.0)
+      // Single optimized call với fast cache
+      const data = await this.cachedFetch(`${API_BASE_URL}/danh-sach/phim-moi-cap-nhat?page=${page}`, true)
+      
+      if (data.items) {
+        const movies = this.transformMovieData(data.items)
+        
+        // Sử dụng TMDB vote_average và vote_count từ API response
+        return movies
+          .filter(movie => {
+            const rating = movie.voteAverage || movie.rating || 0
+            const voteCount = movie.voteCount || 0
+            // Chỉ lấy phim có rating tốt và đủ votes
+            return rating >= 7.0 && voteCount >= 50
+          })
           .sort((a, b) => {
-            const scoreA = (a.views || Math.random() * 1000) * 0.7 + (a.imdbRating || a.rating || 7.0) * 100
-            const scoreB = (b.views || Math.random() * 1000) * 0.7 + (b.imdbRating || b.rating || 7.0) * 100
+            // TMDB weighted score: vote_average * log(vote_count)
+            const scoreA = (a.voteAverage || a.rating || 0) * Math.log10((a.voteCount || 1) + 1)
+            const scoreB = (b.voteAverage || b.rating || 0) * Math.log10((b.voteCount || 1) + 1)
             return scoreB - scoreA
           })
-          .slice(0, 10)
+          .slice(0, 20)
       }
 
-      // Fallback về phim mới
       return this.getNewMovies(page)
     } catch (error) {
-      console.error('Lỗi khi lấy phim trending:', error)
+      console.error('Trending movies error:', error)
       return this.getNewMovies(page)
     }
   }
@@ -379,63 +492,50 @@ export class PhimAPIService {
     }
   }
 
-  // 5. Anime hot tuần qua - anime nổi tiếng mới ra mắt
+  // 5. Anime hot - OPTIMIZED với fallback
   static async getHotAnime(page: number = 1): Promise<Movie[]> {
     try {
-      let animeMovies: Movie[] = []
+      // Primary: API hoạt hình
+      const data = await this.cachedFetch(`${API_BASE_URL}/v1/api/the-loai/hoat-hinh?page=${page}`, true)
       
-      // Thử nhiều cách để tìm anime
-      const searchTerms = ['anime', 'hoạt hình', 'animation', 'cartoon']
-      
-      for (const term of searchTerms) {
-        try {
-          const response = await fetch(`${API_BASE_URL}/v1/api/tim-kiem?keyword=${encodeURIComponent(term)}&page=1`)
-          const data = await response.json()
-          
-          if (data.status && data.data?.items) {
-            const searchResults = this.transformMovieData(data.data.items)
-            animeMovies.push(...searchResults)
-          }
-        } catch (err) {
-          console.log(`Search for ${term} failed:`, err)
+      if (data.status && data.data?.items?.length > 0) {
+        const movies = this.transformMovieData(data.data.items)
+        
+        // Relaxed filtering cho nhiều anime content
+        const filteredMovies = movies.filter(movie => {
+          const rating = movie.voteAverage || movie.rating || 6.0
+          return rating >= 5.0 // Balanced quality threshold
+        })
+        
+        if (filteredMovies.length > 0) {
+          return filteredMovies
+            .sort((a, b) => {
+              const scoreA = (a.voteAverage || a.rating || 6.0) + (a.voteCount ? Math.log10(a.voteCount) : 0)
+              const scoreB = (b.voteAverage || b.rating || 6.0) + (b.voteCount ? Math.log10(b.voteCount) : 0)
+              return scoreB - scoreA
+            })
+            .slice(0, 24)
         }
       }
       
-      // Nếu không tìm được, lọc từ phim mới
-      if (animeMovies.length === 0) {
-        console.log('No anime found from search, filtering from new movies')
-        const newMovies = await this.getNewMovies(1)
-        animeMovies = newMovies.filter(movie => 
-          movie.title.toLowerCase().includes('anime') ||
-          movie.description?.toLowerCase().includes('anime') ||
-          movie.genres.some(genre => 
-            genre.toLowerCase().includes('hoạt hình') || 
-            genre.toLowerCase().includes('anime') ||
-            genre.toLowerCase().includes('animation')
-          )
-        )
+      // Fallback: Japan country với anime filtering
+      try {
+        const japanData = await this.cachedFetch(`${API_BASE_URL}/v1/api/quoc-gia/nhat-ban?page=${page}`, true)
+        
+        if (japanData.status && japanData.data?.items) {
+          const movies = this.transformMovieData(japanData.data.items)
+          const animeMovies = movies.filter(movie => this.hasApiAnimeType(movie))
+          
+          return animeMovies.slice(0, 20)
+        }
+      } catch (err) {
+        // Silent fallback failure
       }
       
-      // Nếu vẫn không có, tạo mock data anime phổ biến
-      if (animeMovies.length === 0) {
-        console.log('Creating fallback anime list')
-        const fallbackMovies = await this.getNewMovies(1)
-        animeMovies = fallbackMovies.slice(0, 15) // Lấy 15 phim đầu làm anime
-      }
-      
-      // Sắp xếp anime hot tuần
-      return animeMovies
-        .filter(movie => (movie.imdbRating || movie.rating || 0) > 5.5)
-        .sort((a, b) => {
-          const scoreA = (a.views || Math.random() * 1000) * 0.8 + (a.imdbRating || a.rating || 7.5) * 100
-          const scoreB = (b.views || Math.random() * 1000) * 0.8 + (b.imdbRating || b.rating || 7.5) * 100
-          return scoreB - scoreA
-        })
-        .slice(0, 20)
+      return []
     } catch (error) {
-      console.error('Lỗi khi lấy anime hot:', error)
-      // Fallback cuối cùng
-      return this.getNewMovies(page).then(movies => movies.slice(0, 15))
+      console.error('Anime fetch error:', error)
+      return []
     }
   }
 
@@ -494,66 +594,41 @@ export class PhimAPIService {
     }
   }
 
-  // 7. Phim theo quốc gia
-  static async getMoviesByCountry(country: 'korean' | 'chinese' | 'western', page: number = 1): Promise<Movie[]> {
+  // 7. Phim theo quốc gia (sử dụng API country slug)
+  static async getMoviesByCountry(country: 'korean' | 'chinese' | 'western' | 'japanese', page: number = 1): Promise<Movie[]> {
     try {
-      let searchKeyword = ''
-      let countryFilter = ''
+      let countrySlug = ''
       
       switch (country) {
         case 'korean':
-          searchKeyword = 'hàn quốc'
-          countryFilter = 'Hàn Quốc'
+          countrySlug = 'han-quoc'
           break
         case 'chinese':  
-          searchKeyword = 'trung quốc'
-          countryFilter = 'Trung Quốc'
+          countrySlug = 'trung-quoc'
           break
         case 'western':
-          searchKeyword = 'mỹ'
-          countryFilter = 'Âu Mỹ'
+          countrySlug = 'au-my'  // Sử dụng slug từ API
+          break
+        case 'japanese':
+          countrySlug = 'nhat-ban'  // Nhật Bản cho anime
           break
       }
 
-      // Thử search theo keyword
-      let movies: Movie[] = []
-      try {
-        const response = await fetch(`${API_BASE_URL}/v1/api/tim-kiem?keyword=${encodeURIComponent(searchKeyword)}&page=${page}`)
-        const data = await response.json()
-        
-        if (data.status && data.data?.items) {
-          movies = this.transformMovieData(data.data.items)
-        }
-      } catch (err) {
-        console.log(`Search for ${country} failed:`, err)
+      // Sử dụng API endpoint country để lấy phim chính xác
+      const response = await fetch(`${API_BASE_URL}/v1/api/quoc-gia/${countrySlug}?page=${page}`)
+      const data = await response.json()
+      
+      if (data.status && data.data?.items?.length > 0) {
+        return this.transformMovieData(data.data.items)
       }
 
-      // Nếu không tìm được, lọc từ phim mới theo country
-      if (movies.length === 0) {
-        const allMovies = await this.getNewMovies(1)
-        movies = allMovies.filter(movie => 
-          movie.country.includes(countryFilter) ||
-          movie.title.toLowerCase().includes(searchKeyword) ||
-          movie.description?.toLowerCase().includes(searchKeyword)
-        )
-      }
-
-      // Fallback với phim mới nếu vẫn không có
-      if (movies.length === 0) {
-        movies = await this.getNewMovies(page)
-      }
-
-      return movies
-        .filter(movie => (movie.imdbRating || movie.rating || 0) > 6.0)
-        .sort((a, b) => {
-          const scoreA = (a.views || Math.random() * 1200) * 0.6 + (a.imdbRating || a.rating || 7.5) * 120
-          const scoreB = (b.views || Math.random() * 1200) * 0.6 + (b.imdbRating || b.rating || 7.5) * 120
-          return scoreB - scoreA
-        })
-        .slice(0, 20)
+      // Fallback: Nếu API country không có data, trả về array rỗng
+      console.log(`No movies found for country ${country} with slug ${countrySlug}`)
+      return []
+      
     } catch (error) {
       console.error(`Lỗi khi lấy phim ${country}:`, error)
-      return this.getNewMovies(page)
+      return []
     }
   }
 
@@ -608,57 +683,66 @@ export class PhimAPIService {
     }
   }
 
-  // Chuyển đổi URL ảnh sang WEBP và tối ưu quality
+  // OPTIMIZED: Smart image URL conversion với WebP + size optimization
   static convertImageUrl(originalUrl: string, size: 'thumb' | 'poster' = 'poster'): string {
     if (!originalUrl || originalUrl === 'null' || originalUrl === 'undefined') {
-      // Trả về một ảnh default chất lượng cao từ PhimAPI
-      return this.convertToWebP('https://phimimg.com/upload/vod/20220309-1/2022030915165476.jpg')
+      const defaultUrl = 'https://phimimg.com/upload/vod/20220309-1/2022030915165476.jpg'
+      return this.convertToWebP(defaultUrl)
     }
     
     try {
-      // Clean up URL
       let cleanUrl = originalUrl.trim()
       
-      // Nếu đã là URL đầy đủ từ PhimAPI/PhimImg
+      // Skip conversion nếu đã là WebP converted URL
+      if (cleanUrl.includes('phimapi.com/image.php')) {
+        return cleanUrl
+      }
+      
+      // Clean và normalize URL
       if (cleanUrl.includes('phimimg.com') || cleanUrl.includes('phimapi.com')) {
-        // Ensure HTTPS và loại bỏ query params có thể làm giảm quality
         cleanUrl = cleanUrl.replace('http://', 'https://').split('?')[0]
-        return this.convertToWebP(cleanUrl)
-      }
-      
-      // Nếu là relative URL từ PhimAPI, thêm base URL
-      if (cleanUrl.startsWith('/')) {
-        return this.convertToWebP(`https://phimimg.com${cleanUrl}`)
-      }
-      
-      // Nếu URL không có http và có extension, xử lý path
-      if (!cleanUrl.startsWith('http') && cleanUrl.includes('.')) {
-        // Kiểm tra xem đã có path upload/vod chưa
+      } else if (cleanUrl.startsWith('/')) {
+        cleanUrl = `https://phimimg.com${cleanUrl}`
+      } else if (!cleanUrl.startsWith('http') && cleanUrl.includes('.')) {
         if (cleanUrl.includes('upload/vod/')) {
-          return this.convertToWebP(`https://phimimg.com/${cleanUrl}`)
+          cleanUrl = `https://phimimg.com/${cleanUrl}`
         } else {
-          return this.convertToWebP(`https://phimimg.com/upload/vod/${cleanUrl}`)
+          cleanUrl = `https://phimimg.com/upload/vod/${cleanUrl}`
         }
+      } else {
+        cleanUrl = 'https://phimimg.com/upload/vod/20220309-1/2022030915165476.jpg'
       }
       
-      // Fallback về một ảnh mặc định chất lượng cao
-      return this.convertToWebP('https://phimimg.com/upload/vod/20220309-1/2022030915165476.jpg')
+      // Convert to WebP với size optimization
+      return this.convertToWebP(cleanUrl)
+      
     } catch (error) {
-      console.error('Lỗi chuyển đổi URL ảnh:', error)
+      console.error('Image URL conversion error:', error)
       return this.convertToWebP('https://phimimg.com/upload/vod/20220309-1/2022030915165476.jpg')
     }
   }
 
-  // Chuyển đổi image URL sang WEBP format với quality cao
-  static convertToWebP(imageUrl: string): string {
+  // Enhanced WebP conversion với smart quality settings
+  static convertToWebP(imageUrl: string, quality: number = 90): string {
     if (!imageUrl) return imageUrl
     
-    // Tạm thời return original URL để tránh mờ, sẽ implement WEBP sau
-    return imageUrl
-    
-    // // Sử dụng PhimAPI image conversion service với quality cao
-    // const encodedUrl = encodeURIComponent(imageUrl)
-    // return `https://phimapi.com/image.php?url=${encodedUrl}&quality=95`
+    try {
+      // Skip nếu đã là converted URL
+      if (imageUrl.includes('phimapi.com/image.php')) {
+        return imageUrl
+      }
+      
+      // Smart quality based on image type và device
+      const smartQuality = imageUrl.includes('thumb') ? 85 : quality
+      
+      const encodedUrl = encodeURIComponent(imageUrl)
+      const webpUrl = `https://phimapi.com/image.php?url=${encodedUrl}&quality=${smartQuality}&format=webp`
+      
+      return webpUrl
+    } catch (error) {
+      console.error('WebP conversion error:', error)
+      return imageUrl // Graceful fallback
+    }
   }
 
   // Chuyển đổi dữ liệu từ API thành format của ứng dụng
@@ -684,14 +768,18 @@ export class PhimAPIService {
         poster: this.convertImageUrl(posterUrl),
         thumbnail: this.convertImageUrl(thumbUrl),
         backdrop: this.convertImageUrl(backdropUrl),
-        rating: parseFloat(item.tmdb?.vote_average || item.rating || '0'),
-        imdbRating: parseFloat(item.imdb?.rating || item.tmdb?.vote_average || item.rating || '0'),
-        voteAverage: parseFloat(item.tmdb?.vote_average || item.vote_average || '0') || undefined,
-        voteCount: parseInt(item.tmdb?.vote_count || item.vote_count || '0') || undefined,
+        // Ưu tiên TMDB data cho rating (như ảnh API response bạn cung cấp)
+        rating: parseFloat(item.vote_average || item.tmdb?.vote_average || item.rating || '6.0'),
+        imdbRating: parseFloat(item.imdb?.rating || item.tmdb?.vote_average || item.vote_average || '0'),
+        voteAverage: parseFloat(item.vote_average || item.tmdb?.vote_average || '0') || undefined,
+        voteCount: parseInt(item.vote_count || item.tmdb?.vote_count || '0') || undefined,
         totalEpisodes: this.extractTotalEpisodes(item.episode_current, item.episode_total),
         currentEpisode: this.extractCurrentEpisode(item.episode_current),
         year: item.year || new Date().getFullYear(),
+        // Improved country handling để support anime filtering
         country: Array.isArray(item.country) ? item.country[0]?.name : item.country?.name || 'N/A',
+        countryData: Array.isArray(item.country) ? item.country : (item.country ? [item.country] : []),
+        
         genres: Array.isArray(item.category) 
           ? item.category.map((cat: any) => cat.name || cat).filter(Boolean)
           : [item.category?.name || 'Phim'],
@@ -841,21 +929,157 @@ export class PhimAPIService {
     return 'single'
   }
 
-  // Kiểm tra xem có phải hoạt hình không
+  // Kiểm tra xem có phải hoạt hình không - Enhanced detection
   private static isAnimation(item: any): boolean {
     const title = (item.name || item.title || '').toLowerCase()
     const description = (item.content || item.description || '').toLowerCase()
     const genres = Array.isArray(item.category) 
       ? item.category.map((cat: any) => (cat.name || cat || '').toLowerCase()).join(' ')
       : (item.category?.name || '').toLowerCase()
-
-    const animationKeywords = ['hoạt hình', 'anime', 'animation', 'cartoon', 'animated']
     
-    return animationKeywords.some(keyword => 
+    // Expanded animation keywords với các từ khóa anime phổ biến
+    const animationKeywords = [
+      // Vietnamese
+      'hoạt hình', 'anime', 'phim hoạt hình',
+      // English  
+      'animation', 'animated', 'cartoon',
+      // Japanese terms
+      'manga', 'otaku', 'shounen', 'shoujo', 'seinen', 'josei',
+      // Common anime genres
+      'mecha', 'isekai', 'slice of life', 'magical girl'
+    ]
+    
+    // Common anime title patterns
+    const animePatterns = [
+      /\s(wo|ga|no|ni|de|to|wa|o)\s/i, // Japanese particles
+      /season\s*\d+/i, // Season numbering common in anime
+      /\d+(st|nd|rd|th)\s*season/i,
+      /(op|ed)\s*\d+/i, // Opening/Ending references
+      /\b(kun|chan|san|sama|sensei|senpai|kohai)\b/i // Japanese honorifics
+    ]
+    
+    // Check keywords
+    const hasKeyword = animationKeywords.some(keyword => 
       title.includes(keyword) || 
       description.includes(keyword) || 
       genres.includes(keyword)
     )
+    
+    // Check patterns
+    const hasAnimePattern = animePatterns.some(pattern => 
+      pattern.test(title) || pattern.test(description)
+    )
+    
+    return hasKeyword || hasAnimePattern
+  }
+
+  // Kiểm tra xem có phải từ Nhật Bản không
+  private static isFromJapan(item: any): boolean {
+    if (!item) return false
+    
+    // Check multiple country fields
+    const countryFields = [
+      item.country,
+      item.origin_country,
+      item.nationality,
+      ...(Array.isArray(item.country) ? item.country : [])
+    ]
+    
+    const countryText = countryFields
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+    
+    const japanKeywords = [
+      'nhật bản', 'japan', 'japanese', 'jp',
+      'nippon', 'nihon', '日本'
+    ]
+    
+    return japanKeywords.some(keyword => 
+      countryText.includes(keyword)
+    )
+  }
+
+  // Kiểm tra anime Nhật Bản (kết hợp cả 2 điều kiện)
+  private static isJapaneseAnime(item: any): boolean {
+    const isAnime = this.isAnimation(item)
+    const isJapan = this.isFromJapan(item)
+    
+    // Nếu có cả 2 điều kiện -> chắc chắn là anime Nhật
+    if (isAnime && isJapan) return true
+    
+    // Nếu có type hoạt hình từ API -> có thể là anime
+    if (item.type === 'hoathinh' || item.apiType === 'hoathinh') {
+      return true
+    }
+    
+    // Nếu từ Nhật và có đặc trưng anime -> có thể là anime
+    if (isJapan && this.hasAnimeCharacteristics(item)) {
+      return true
+    }
+    
+    return false
+  }
+
+  // Kiểm tra đặc trưng anime
+  private static hasAnimeCharacteristics(item: any): boolean {
+    const title = (item.name || item.title || '').toLowerCase()
+    
+    // Các pattern đặc trưng của anime
+    const animeCharacteristics = [
+      /\b(season|mùa)\s*\d+/i,
+      /\b(ep|tập)\s*\d+/i,
+      /\b(ova|ona|movie)\b/i,
+      /\b(shonen|shoujo|seinen|josei)\b/i,
+      /\b(dragon|ball|naruto|one piece|attack on titan)\b/i,
+      // Japanese title patterns
+      /^[a-z\s]*\s*[A-Z][a-z]*\s*(no|wa|ga|wo|ni)\s*/i
+    ]
+    
+    return animeCharacteristics.some(pattern => pattern.test(title))
+  }
+
+  // Kiểm tra API type anime trực tiếp (PERFORMANCE OPTIMIZED)
+  private static hasApiAnimeType(movie: any): boolean {
+    // 1. Check API type field trực tiếp - FASTEST CHECK
+    if (movie.type === 'hoathinh' || movie.apiType === 'hoathinh') {
+      return true
+    }
+    
+    // 2. Check category từ API data
+    if (Array.isArray(movie.categories)) {
+      const hasAnimationCategory = movie.categories.some((cat: any) => {
+        const categoryName = (cat.name || cat.slug || cat).toLowerCase()
+        return categoryName.includes('hoat-hinh') || 
+               categoryName.includes('hoạt hình') ||
+               categoryName.includes('animation')
+      })
+      if (hasAnimationCategory) return true
+    }
+    
+    // 3. Check countryData từ API cho performance tối ưu
+    if (Array.isArray(movie.countryData)) {
+      const isFromJapan = movie.countryData.some((c: any) => 
+        (c.name || '').toLowerCase().includes('nhật bản') ||
+        (c.slug || '').includes('nhat-ban') ||
+        (c.name || '').toLowerCase().includes('japan')
+      )
+      
+      // Nếu từ Nhật Bản và có keyword anime -> có thể là anime
+      if (isFromJapan) {
+        const title = (movie.name || movie.title || '').toLowerCase()
+        const hasAnimeIndicator = title.includes('anime') || 
+                                 title.includes('hoạt hình') ||
+                                 title.includes('アニメ') ||
+                                 // Common anime patterns
+                                 /season\s*\d+/i.test(title) ||
+                                 /\b(shounen|shoujo|seinen|josei)\b/i.test(title)
+        
+        if (hasAnimeIndicator) return true
+      }
+    }
+    
+    return false
   }
 
   // Map API type sang internal type system
